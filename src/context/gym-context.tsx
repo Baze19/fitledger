@@ -1,10 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan } from '@/types';
-import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS } from '@/lib/mock-data';
+import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant } from '@/types';
+import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS } from '@/lib/mock-data';
 
 interface GymContextType {
+  tenants: GymTenant[];
+  activeTenant: GymTenant;
+  switchTenant: (tenantId: string) => void;
+  addTenant: (data: Omit<GymTenant, 'id' | 'joinedDate'>) => GymTenant;
+
   members: Member[];
   plans: Plan[];
   staffList: StaffUser[];
@@ -13,6 +18,7 @@ interface GymContextType {
   transactions: Transaction[];
   auditLogs: AuditLog[];
   shiftSummary: ShiftSummary;
+  
   activeScanResult: {
     member?: Member;
     status: 'allowed' | 'denied' | 'not_found' | 'idle';
@@ -25,15 +31,20 @@ interface GymContextType {
   overrideExpiredEntry: (memberId: string, reason: string) => void;
   closeShift: (cashCounted: number) => { discrepancy: number; isBalanced: boolean };
   switchStaff: (staffId: string, pin: string) => boolean;
+  addStaff: (data: { fullName: string; phone: string; role: StaffUser['role']; pin: string }) => StaffUser;
+  deactivateStaff: (staffId: string) => void;
   askOwnerBot: (query: string) => string;
 }
 
 const GymContext = createContext<GymContextType | undefined>(undefined);
 
 export function GymProvider({ children }: { children: React.ReactNode }) {
+  const [tenants, setTenants] = useState<GymTenant[]>(INITIAL_TENANTS);
+  const [activeTenant, setActiveTenant] = useState<GymTenant>(INITIAL_TENANTS[0]); // Ikorodu branch
+
   const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
   const [plans] = useState<Plan[]>(INITIAL_PLANS);
-  const [staffList] = useState<StaffUser[]>(INITIAL_STAFF);
+  const [staffList, setStaffList] = useState<StaffUser[]>(INITIAL_STAFF);
   const [activeStaff, setActiveStaff] = useState<StaffUser>(INITIAL_STAFF[0]); // Mary Okafor
   const [checkIns, setCheckIns] = useState<CheckIn[]>(INITIAL_CHECKINS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
@@ -44,12 +55,74 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     status: 'allowed' | 'denied' | 'not_found' | 'idle';
     message?: string;
   }>({
-    member: INITIAL_MEMBERS[0], // Abiodun
+    member: INITIAL_MEMBERS[0],
     status: 'allowed',
     message: 'Active monthly VIP Pass (Expires in 18 days)',
   });
 
-  // Calculate live shift totals
+  const switchTenant = (tenantId: string) => {
+    const found = tenants.find((t) => t.id === tenantId);
+    if (found) {
+      setActiveTenant(found);
+    }
+  };
+
+  const addTenant = (data: Omit<GymTenant, 'id' | 'joinedDate'>) => {
+    const newTenant: GymTenant = {
+      ...data,
+      id: `tenant_${Date.now()}`,
+      joinedDate: '2026-10-22',
+    };
+    setTenants((prev) => [newTenant, ...prev]);
+    return newTenant;
+  };
+
+  // Owner adds new Front-Desk Staff with 4-digit PIN
+  const addStaff = (data: { fullName: string; phone: string; role: StaffUser['role']; pin: string }) => {
+    const newStaff: StaffUser = {
+      id: `staff_${Date.now()}`,
+      tenantId: activeTenant.id,
+      fullName: data.fullName,
+      phone: data.phone,
+      role: data.role,
+      pin: data.pin,
+      branchName: activeTenant.name,
+      shiftStatus: 'off_duty',
+    };
+    setStaffList((prev) => [...prev, newStaff]);
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: 'Gym Owner',
+      action: 'Staff Registered',
+      details: `Created new staff account for ${newStaff.fullName} (${newStaff.role.toUpperCase()}) with Shift PIN [${newStaff.pin}]. WhatsApp credentials dispatched to ${newStaff.phone}.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    return newStaff;
+  };
+
+  const deactivateStaff = (staffId: string) => {
+    const target = staffList.find((s) => s.id === staffId);
+    if (!target) return;
+    setStaffList((prev) => prev.filter((s) => s.id !== staffId));
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: 'Gym Owner',
+      action: 'Staff Deactivated',
+      details: `Deactivated staff account for ${target.fullName}. Shift PIN revoked immediately.`,
+      severity: 'warning',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  // Shift financial totals
   const cashExpected = transactions
     .filter((t) => t.paymentMethod === 'cash')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -92,7 +165,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setActiveScanResult({ status: 'idle' });
   };
 
-  // 1. Rapid Member Check-in (sub-2s)
+  // Check in
   const checkInMember = (query: string, method: 'qr_scan' | 'phone_lookup' = 'qr_scan') => {
     const clean = query.trim().toLowerCase();
     const found = members.find(
@@ -105,7 +178,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     if (!found) {
       setActiveScanResult({
         status: 'not_found',
-        message: `No member found matching "${query}". Check number or register as new member.`,
+        message: `No member found matching "${query}". Check number or register new member.`,
       });
       return { success: false, reason: 'Member not found' };
     }
@@ -116,6 +189,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     if (isExpired) {
       const newCheckIn: CheckIn = {
         id: `chk_${Date.now()}`,
+        tenantId: activeTenant.id,
         memberId: found.id,
         memberCode: found.memberCode,
         memberName: found.fullName,
@@ -134,9 +208,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       return { success: false, member: found, reason: 'EXPIRED' };
     }
 
-    // Allowed
     const newCheckIn: CheckIn = {
       id: `chk_${Date.now()}`,
+      tenantId: activeTenant.id,
       memberId: found.id,
       memberCode: found.memberCode,
       memberName: found.fullName,
@@ -147,7 +221,6 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     };
     setCheckIns((prev) => [newCheckIn, ...prev]);
 
-    // Update member visit stats
     setMembers((prev) =>
       prev.map((m) =>
         m.id === found.id
@@ -169,7 +242,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     return { success: true, member: found };
   };
 
-  // 2. Fast Member Registration (Sub-45s)
+  // Register Member
   const registerMember = (data: {
     fullName: string;
     phoneNumber: string;
@@ -181,6 +254,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
     const newMember: Member = {
       id: `mem_${Date.now()}`,
+      tenantId: activeTenant.id,
       memberCode: newCode,
       fullName: data.fullName,
       phoneNumber: data.phoneNumber,
@@ -199,9 +273,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
     setMembers((prev) => [newMember, ...prev]);
 
-    // Create transaction
     const newTx: Transaction = {
       id: `tx_${Date.now()}`,
+      tenantId: activeTenant.id,
       memberId: newMember.id,
       memberName: newMember.fullName,
       memberCode: newMember.memberCode,
@@ -215,9 +289,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     };
     setTransactions((prev) => [newTx, ...prev]);
 
-    // Audit log
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
       timestamp: 'Just now',
       actorStaffName: activeStaff.fullName,
       action: 'New Member Registered',
@@ -226,9 +300,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     };
     setAuditLogs((prev) => [audit, ...prev]);
 
-    // Immediate check-in
     const chk: CheckIn = {
       id: `chk_${Date.now()}`,
+      tenantId: activeTenant.id,
       memberId: newMember.id,
       memberCode: newMember.memberCode,
       memberName: newMember.fullName,
@@ -248,7 +322,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     return newMember;
   };
 
-  // 3. Renew Subscription
+  // Renew Member
   const renewMember = (memberId: string, planId: string, paymentMethod: Transaction['paymentMethod']) => {
     const selectedPlan = plans.find((p) => p.id === planId) || plans[1];
     setMembers((prev) =>
@@ -270,6 +344,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     if (target) {
       const newTx: Transaction = {
         id: `tx_${Date.now()}`,
+        tenantId: activeTenant.id,
         memberId: target.id,
         memberName: target.fullName,
         memberCode: target.memberCode,
@@ -285,6 +360,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
       const audit: AuditLog = {
         id: `aud_${Date.now()}`,
+        tenantId: activeTenant.id,
         timestamp: 'Just now',
         actorStaffName: activeStaff.fullName,
         action: 'Subscription Renewed',
@@ -301,13 +377,14 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // 4. Override Expired Entry (Staff Anti-Theft Logged)
+  // Override Entry
   const overrideExpiredEntry = (memberId: string, reason: string) => {
     const target = members.find((m) => m.id === memberId);
     if (!target) return;
 
     const newCheckIn: CheckIn = {
       id: `chk_${Date.now()}`,
+      tenantId: activeTenant.id,
       memberId: target.id,
       memberCode: target.memberCode,
       memberName: target.fullName,
@@ -320,6 +397,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
       timestamp: 'Just now',
       actorStaffName: activeStaff.fullName,
       action: 'Manual Entry Override Triggered',
@@ -340,13 +418,14 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // 5. Shift Handover & Cash Lock
+  // Shift Close
   const closeShift = (cashCounted: number) => {
     const discrepancy = cashCounted - shiftSummary.cashExpected;
     const isBalanced = discrepancy === 0;
 
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
       timestamp: 'Just now',
       actorStaffName: activeStaff.fullName,
       action: 'Shift Closed & Reconciled',
@@ -364,17 +443,18 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     return { discrepancy, isBalanced };
   };
 
-  // 6. Switch Staff via 4-Digit PIN
+  // Shift Switch
   const switchStaff = (staffId: string, pin: string) => {
     const found = staffList.find((s) => s.id === staffId && s.pin === pin);
     if (found) {
       setActiveStaff(found);
       const audit: AuditLog = {
         id: `aud_${Date.now()}`,
+        tenantId: activeTenant.id,
         timestamp: 'Just now',
         actorStaffName: found.fullName,
         action: 'Staff Shift Started',
-        details: `${found.fullName} unlocked terminal with PIN.`,
+        details: `${found.fullName} unlocked terminal with PIN [${pin}].`,
         severity: 'info',
       };
       setAuditLogs((prev) => [audit, ...prev]);
@@ -383,7 +463,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  // 7. Owner WhatsApp AI Bot Simulator
+  // WhatsApp AI Bot
   const askOwnerBot = (query: string): string => {
     const q = query.toLowerCase();
 
@@ -408,16 +488,25 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       return `No members expire tomorrow, Chief!`;
     }
 
-    if (q.includes('report') || q.includes('summary') || q.includes('today')) {
-      return `Good day Chief! Today's Financial Summary:\n• Gross Revenue: ₦${shiftSummary.totalRevenue.toLocaleString()}\n• Bank Transfers: ₦${shiftSummary.transferExpected.toLocaleString()}\n• POS Card: ₦${shiftSummary.posExpected.toLocaleString()}\n• Cash in Drawer: ₦${shiftSummary.cashExpected.toLocaleString()}\n• Total Check-ins: ${checkIns.length} members\n• Overrides: ${shiftSummary.overridesCount} staff flags.`;
+    if (q.includes('staff') || q.includes('pin') || q.includes('receptionist')) {
+      const staffInfo = staffList.map((s) => `• ${s.fullName} (${s.role.toUpperCase()}): PIN ${s.pin} [${s.shiftStatus}]`).join('\n');
+      return `Chief, here are the active staff members and their counter PINs for ${activeTenant.name}:\n${staffInfo}`;
     }
 
-    return `Chief, total gross revenue today is ₦${shiftSummary.totalRevenue.toLocaleString()} across ${transactions.length} payments. ${checkIns.length} members have checked in so far today.`;
+    if (q.includes('report') || q.includes('summary') || q.includes('today')) {
+      return `Good day Chief! Today's Financial Summary for ${activeTenant.name}:\n• Gross Revenue: ₦${shiftSummary.totalRevenue.toLocaleString()}\n• Bank Transfers: ₦${shiftSummary.transferExpected.toLocaleString()}\n• POS Card: ₦${shiftSummary.posExpected.toLocaleString()}\n• Cash in Drawer: ₦${shiftSummary.cashExpected.toLocaleString()}\n• Total Check-ins: ${checkIns.length} members\n• Overrides: ${shiftSummary.overridesCount} staff flags.`;
+    }
+
+    return `Chief, total gross revenue today is ₦${shiftSummary.totalRevenue.toLocaleString()} across ${transactions.length} payments. ${checkIns.length} members have checked in so far today at ${activeTenant.name}.`;
   };
 
   return (
     <GymContext.Provider
       value={{
+        tenants,
+        activeTenant,
+        switchTenant,
+        addTenant,
         members,
         plans,
         staffList,
@@ -434,6 +523,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         overrideExpiredEntry,
         closeShift,
         switchStaff,
+        addStaff,
+        deactivateStaff,
         askOwnerBot,
       }}
     >

@@ -1,5 +1,4 @@
 export type MemberStatus = 'active' | 'expired' | 'frozen' | 'suspended';
-
 export type PlanType = 'daily' | 'monthly' | 'quarterly' | 'annual';
 
 export interface Plan {
@@ -13,7 +12,8 @@ export interface Plan {
 
 export interface Member {
   id: string;
-  memberCode: string; // e.g. '#124253'
+  tenantId: string; // Multi-tenant isolation
+  memberCode: string; // e.g. '124253'
   fullName: string;
   phoneNumber: string; // WhatsApp number
   email: string;
@@ -35,6 +35,7 @@ export type CheckInStatus = 'allowed' | 'denied';
 
 export interface CheckIn {
   id: string;
+  tenantId: string;
   memberId: string;
   memberCode: string;
   memberName: string;
@@ -49,6 +50,7 @@ export type PaymentMethod = 'bank_transfer' | 'pos_card' | 'cash' | 'paystack_on
 
 export interface Transaction {
   id: string;
+  tenantId: string;
   memberId: string;
   memberName: string;
   memberCode: string;
@@ -63,6 +65,7 @@ export interface Transaction {
 
 export interface AuditLog {
   id: string;
+  tenantId: string;
   timestamp: string;
   actorStaffName: string;
   action: string;
@@ -72,12 +75,28 @@ export interface AuditLog {
 
 export interface StaffUser {
   id: string;
+  tenantId: string;
   fullName: string;
   role: 'owner' | 'manager' | 'receptionist' | 'trainer';
   phone: string;
   pin: string; // 4-digit shift PIN
   branchName: string;
   avatarUrl?: string;
+  shiftStatus: 'on_duty' | 'off_duty';
+}
+
+export interface GymTenant {
+  id: string;
+  name: string;
+  slug: string;
+  location: string;
+  ownerName: string;
+  ownerPhone: string;
+  planTier: 'Starter' | 'Growth' | 'Enterprise';
+  monthlyFee: number;
+  membersCount: number;
+  status: 'active' | 'trial' | 'suspended';
+  joinedDate: string;
 }
 
 export interface ShiftSummary {

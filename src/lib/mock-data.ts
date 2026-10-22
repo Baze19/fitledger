@@ -1,4 +1,59 @@
-import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog } from '@/types';
+import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant } from '@/types';
+
+export const INITIAL_TENANTS: GymTenant[] = [
+  {
+    id: 'tenant_ikorodu',
+    name: 'FitLedger Gym Ikorodu',
+    slug: 'ikorodu',
+    location: '138 Ikorodu - Shagamu Road, Ikorodu, Lagos',
+    ownerName: 'Chief Tunde Adeleke',
+    ownerPhone: '0802 345 6789',
+    planTier: 'Growth',
+    monthlyFee: 45000,
+    membersCount: 240,
+    status: 'active',
+    joinedDate: '2026-08-01',
+  },
+  {
+    id: 'tenant_lekki',
+    name: 'IronBase Fitness Lekki',
+    slug: 'lekki',
+    location: 'Admiralty Way, Lekki Phase 1, Lagos',
+    ownerName: 'Emeka Alabi',
+    ownerPhone: '0803 999 8811',
+    planTier: 'Enterprise',
+    monthlyFee: 95000,
+    membersCount: 580,
+    status: 'active',
+    joinedDate: '2026-07-15',
+  },
+  {
+    id: 'tenant_surulere',
+    name: 'Hardcore Gym Surulere',
+    slug: 'surulere',
+    location: 'Bode Thomas Street, Surulere, Lagos',
+    ownerName: 'Alhaji Rasheed Bello',
+    ownerPhone: '0805 111 2233',
+    planTier: 'Starter',
+    monthlyFee: 25000,
+    membersCount: 135,
+    status: 'trial',
+    joinedDate: '2026-10-18', // 14-day trial!
+  },
+  {
+    id: 'tenant_ikeja',
+    name: 'Apex Athletic Club Ikeja',
+    slug: 'ikeja',
+    location: 'GRA Ikeja, Lagos',
+    ownerName: 'Dr. (Mrs) Kemi Coker',
+    ownerPhone: '0812 444 5566',
+    planTier: 'Growth',
+    monthlyFee: 45000,
+    membersCount: 310,
+    status: 'active',
+    joinedDate: '2026-09-05',
+  },
+];
 
 export const INITIAL_PLANS: Plan[] = [
   {
@@ -38,33 +93,40 @@ export const INITIAL_PLANS: Plan[] = [
 export const INITIAL_STAFF: StaffUser[] = [
   {
     id: 'staff_mary',
+    tenantId: 'tenant_ikorodu',
     fullName: 'Mary Okafor',
     role: 'receptionist',
     phone: '0803 123 4567',
     pin: '4821',
     branchName: 'Ikorodu Branch',
+    shiftStatus: 'on_duty',
   },
   {
     id: 'staff_john',
+    tenantId: 'tenant_ikorodu',
     fullName: 'John Adeleke',
     role: 'receptionist',
     phone: '0812 987 6543',
     pin: '1102',
     branchName: 'Ikorodu Branch',
+    shiftStatus: 'off_duty',
   },
   {
     id: 'staff_tunde',
+    tenantId: 'tenant_ikorodu',
     fullName: 'Coach Tunde',
     role: 'trainer',
     phone: '0805 555 1212',
     pin: '7730',
     branchName: 'Ikorodu Branch',
+    shiftStatus: 'on_duty',
   },
 ];
 
 export const INITIAL_MEMBERS: Member[] = [
   {
     id: 'mem_abiodun',
+    tenantId: 'tenant_ikorodu',
     memberCode: '124253',
     fullName: 'Abiodun Oludolapo',
     phoneNumber: '0803 456 7890',
@@ -89,6 +151,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'mem_emeka',
+    tenantId: 'tenant_ikorodu',
     memberCode: '108741',
     fullName: 'Emeka Nwosu',
     phoneNumber: '0802 111 2233',
@@ -107,6 +170,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'mem_tunde',
+    tenantId: 'tenant_ikorodu',
     memberCode: '119842',
     fullName: 'Tunde Bakare',
     phoneNumber: '0809 333 4455',
@@ -125,6 +189,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'mem_chioma',
+    tenantId: 'tenant_ikorodu',
     memberCode: '120455',
     fullName: 'Chioma Adeyemi',
     phoneNumber: '0814 777 8899',
@@ -143,6 +208,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'mem_kelvin',
+    tenantId: 'tenant_ikorodu',
     memberCode: '114522',
     fullName: 'Kelvin Okafor',
     phoneNumber: '0808 222 3344',
@@ -160,6 +226,7 @@ export const INITIAL_MEMBERS: Member[] = [
   },
   {
     id: 'mem_blessing',
+    tenantId: 'tenant_ikorodu',
     memberCode: '118933',
     fullName: 'Blessing Eze',
     phoneNumber: '0813 666 7788',
@@ -180,6 +247,7 @@ export const INITIAL_MEMBERS: Member[] = [
 export const INITIAL_TRANSACTIONS: Transaction[] = [
   {
     id: 'tx_001',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_chioma',
     memberName: 'Chioma Adeyemi',
     memberCode: '120455',
@@ -193,6 +261,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   },
   {
     id: 'tx_002',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_abiodun',
     memberName: 'Abiodun Oludolapo',
     memberCode: '124253',
@@ -206,6 +275,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   },
   {
     id: 'tx_003',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_tunde',
     memberName: 'Tunde Bakare',
     memberCode: '119842',
@@ -219,6 +289,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   },
   {
     id: 'tx_004',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_walkin1',
     memberName: 'Femi Salami (Walk-in)',
     memberCode: 'WALK-01',
@@ -232,6 +303,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   },
   {
     id: 'tx_005',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_walkin2',
     memberName: 'Dayo Peters (Walk-in)',
     memberCode: 'WALK-02',
@@ -248,6 +320,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
 export const INITIAL_CHECKINS: CheckIn[] = [
   {
     id: 'chk_001',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_abiodun',
     memberCode: '124253',
     memberName: 'Abiodun Oludolapo',
@@ -258,6 +331,7 @@ export const INITIAL_CHECKINS: CheckIn[] = [
   },
   {
     id: 'chk_002',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_tunde',
     memberCode: '119842',
     memberName: 'Tunde Bakare',
@@ -268,6 +342,7 @@ export const INITIAL_CHECKINS: CheckIn[] = [
   },
   {
     id: 'chk_003',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_emeka',
     memberCode: '108741',
     memberName: 'Emeka Nwosu',
@@ -279,6 +354,7 @@ export const INITIAL_CHECKINS: CheckIn[] = [
   },
   {
     id: 'chk_004',
+    tenantId: 'tenant_ikorodu',
     memberId: 'mem_chioma',
     memberCode: '120455',
     memberName: 'Chioma Adeyemi',
@@ -292,6 +368,7 @@ export const INITIAL_CHECKINS: CheckIn[] = [
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'aud_001',
+    tenantId: 'tenant_ikorodu',
     timestamp: '12m ago',
     actorStaffName: 'Mary Okafor',
     action: 'Subscription Expiry Blocked',
@@ -300,6 +377,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   },
   {
     id: 'aud_002',
+    tenantId: 'tenant_ikorodu',
     timestamp: '11:15 AM',
     actorStaffName: 'Mary Okafor',
     action: 'New Member Registered',
@@ -308,6 +386,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   },
   {
     id: 'aud_003',
+    tenantId: 'tenant_ikorodu',
     timestamp: '02:00 PM (Yesterday)',
     actorStaffName: 'John Adeleke',
     action: 'Shift Handover Reconciliation',
