@@ -983,6 +983,9 @@ export default function CommercialLandingPage() {
             </Link>
           </div>
 
+        </div>
+      </section>
+
       {/* ============================================================== */}
       {/* 7.5 FREQUENTLY ASKED OPERATIONAL QUESTIONS (LAGOS GYM FAQS)    */}
       {/* ============================================================== */}
