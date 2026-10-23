@@ -62,6 +62,7 @@ interface GymContextType {
   bankTransfers: BankTransferVerification[];
   verifyTransferManually: (id: string, staffPin: string) => void;
   trainerCommissions: TrainerCommission[];
+  payoutTrainer: (trainerId: string) => void;
   retailItems: RetailItem[];
   stockDeliveries: StockDelivery[];
   sellRetailItem: (itemId: string, paymentMethod: PaymentMethod) => Transaction;
