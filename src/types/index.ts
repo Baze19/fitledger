@@ -121,3 +121,40 @@ export interface OwnerAccount {
   password?: string;
   role: 'owner';
 }
+
+export interface BankTransferVerification {
+  id: string;
+  tenantId: string;
+  senderName: string;
+  bankName: string;
+  amount: number;
+  timestamp: string;
+  reference: string;
+  status: 'settled' | 'unconfirmed_fraud_risk';
+  verificationMethod: 'paystack_dedicated_virtual_account' | 'manual_slip_flagged';
+  settledAt?: string;
+  staffVerifiedPin?: string;
+}
+
+export interface TrainerCommission {
+  trainerId: string;
+  trainerName: string;
+  specialty: string;
+  phone: string;
+  completedSessions: number;
+  totalClientFees: number;
+  trainerCutPercentage: number; // e.g. 60
+  trainerEarnings: number;
+  gymCutEarnings: number;
+  rating: number;
+  status: 'pending_biweekly_payout' | 'paid';
+}
+
+export interface RetailItem {
+  id: string;
+  name: string;
+  category: 'beverage' | 'supplement' | 'daily_pass' | 'merchandise';
+  price: number;
+  inStock: number;
+  icon: string;
+}

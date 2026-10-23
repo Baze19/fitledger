@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount } from '@/types';
-import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS } from '@/lib/mock-data';
+import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, PaymentMethod } from '@/types';
+import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS } from '@/lib/mock-data';
 
 interface GymContextType {
   tenants: GymTenant[];
@@ -58,6 +58,13 @@ interface GymContextType {
   addStaff: (data: { fullName: string; phone: string; role: StaffUser['role']; pin: string }) => StaffUser;
   deactivateStaff: (staffId: string) => void;
   askOwnerBot: (query: string) => string;
+
+  bankTransfers: BankTransferVerification[];
+  verifyTransferManually: (id: string, staffPin: string) => void;
+  trainerCommissions: TrainerCommission[];
+  payoutTrainer: (trainerId: string) => void;
+  retailItems: RetailItem[];
+  sellRetailItem: (itemId: string, paymentMethod: PaymentMethod) => Transaction;
 }
 
 const GymContext = createContext<GymContextType | undefined>(undefined);
@@ -76,6 +83,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const [checkIns, setCheckIns] = useState<CheckIn[]>(INITIAL_CHECKINS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
+  const [bankTransfers, setBankTransfers] = useState<BankTransferVerification[]>(INITIAL_BANK_TRANSFERS);
+  const [trainerCommissions, setTrainerCommissions] = useState<TrainerCommission[]>(INITIAL_TRAINER_COMMISSIONS);
+  const [retailItems, setRetailItems] = useState<RetailItem[]>(INITIAL_RETAIL_ITEMS);
 
   const [activeScanResult, setActiveScanResult] = useState<{
     member?: Member;
@@ -304,6 +314,89 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
 
     return matched;
+  };
+
+  const verifyTransferManually = (id: string, staffPin: string) => {
+    setBankTransfers((prev) =>
+      prev.map((bt) =>
+        bt.id === id
+          ? {
+              ...bt,
+              status: 'settled',
+              settledAt: 'Manually cleared at desk by Shift Lead',
+              staffVerifiedPin: staffPin,
+            }
+          : bt
+      )
+    );
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: `Staff (PIN: ${staffPin})`,
+      action: 'Bank Transfer Cleared Manually',
+      details: `Staff overrode unconfirmed bank transfer alert [Ref: ${id}]. Stamped with Shift PIN [${staffPin}].`,
+      severity: 'warning',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  const payoutTrainer = (trainerId: string) => {
+    setTrainerCommissions((prev) =>
+      prev.map((tc) =>
+        tc.trainerId === trainerId ? { ...tc, status: 'paid' } : tc
+      )
+    );
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: 'Gym Owner',
+      action: 'Trainer Commission Payout',
+      details: `Bi-weekly PT commission paid for trainer [${trainerId}]. Session ledger reconciled.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  const sellRetailItem = (itemId: string, paymentMethod: PaymentMethod): Transaction => {
+    const item = retailItems.find((r) => r.id === itemId) || retailItems[0];
+
+    setRetailItems((prev) =>
+      prev.map((r) => (r.id === itemId && r.inStock > 0 ? { ...r, inStock: r.inStock - 1 } : r))
+    );
+
+    const newTx: Transaction = {
+      id: `tx_ret_${Date.now()}`,
+      tenantId: activeTenant.id,
+      memberId: 'mem_walkin',
+      memberName: `Walk-in Guest (${item.name})`,
+      memberCode: 'RETAIL',
+      amount: item.price,
+      paymentMethod,
+      reference: `POS_${Math.floor(100000 + Math.random() * 900000)}`,
+      timestamp: 'Just now',
+      planName: item.name,
+      receivedByStaffName: activeStaff.fullName,
+      status: 'verified',
+    };
+
+    setTransactions((prev) => [newTx, ...prev]);
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeStaff.fullName,
+      action: 'Counter Pro-Shop Sale',
+      details: `Sold ${item.name} for ₦${item.price.toLocaleString()} via ${paymentMethod.replace('_', ' ').toUpperCase()}. Cash in drawer updated.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    return newTx;
   };
 
   // Owner adds new Front-Desk Staff with 4-digit PIN
@@ -763,6 +856,12 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         addStaff,
         deactivateStaff,
         askOwnerBot,
+        bankTransfers,
+        verifyTransferManually,
+        trainerCommissions,
+        payoutTrainer,
+        retailItems,
+        sellRetailItem,
       }}
     >
       {children}

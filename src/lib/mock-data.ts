@@ -1,4 +1,4 @@
-import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, OwnerAccount } from '@/types';
+import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem } from '@/types';
 
 export const INITIAL_TENANTS: GymTenant[] = [
   {
@@ -431,5 +431,131 @@ export const INITIAL_OWNERS: OwnerAccount[] = [
     phone: '0812 444 5566',
     password: 'apex2026',
     role: 'owner',
+  },
+];
+
+export const INITIAL_BANK_TRANSFERS: BankTransferVerification[] = [
+  {
+    id: 'bt_101',
+    tenantId: 'tenant_ikorodu',
+    senderName: 'Abiodun Oludolapo',
+    bankName: 'GTBank Internet Banking',
+    amount: 45000,
+    timestamp: '11:42 AM',
+    reference: 'PAY_PROV_9921827361',
+    status: 'settled',
+    verificationMethod: 'paystack_dedicated_virtual_account',
+    settledAt: '11:42:04 AM (1.8s settlement)',
+    staffVerifiedPin: '4821',
+  },
+  {
+    id: 'bt_102',
+    tenantId: 'tenant_ikorodu',
+    senderName: 'Chioma Adeyemi',
+    bankName: 'Zenith Bank Mobile App',
+    amount: 30000,
+    timestamp: '10:15 AM',
+    reference: 'PAY_PROV_4481928374',
+    status: 'settled',
+    verificationMethod: 'paystack_dedicated_virtual_account',
+    settledAt: '10:15:02 AM (2.1s settlement)',
+    staffVerifiedPin: '4821',
+  },
+  {
+    id: 'bt_103',
+    tenantId: 'tenant_ikorodu',
+    senderName: 'Kenneth Eze (Flagged Walk-in)',
+    bankName: 'FirstBank SMS Alert (Counter Screenshot)',
+    amount: 30000,
+    timestamp: '09:05 AM',
+    reference: 'UNVERIFIED_FIRSTBANK_SCREENSHOT',
+    status: 'unconfirmed_fraud_risk',
+    verificationMethod: 'manual_slip_flagged',
+    staffVerifiedPin: '4821',
+  },
+];
+
+export const INITIAL_TRAINER_COMMISSIONS: TrainerCommission[] = [
+  {
+    trainerId: 'trainer_tunde',
+    trainerName: 'Coach Tunde Adeleke',
+    specialty: 'Hypertrophy & Strength Training',
+    phone: '0805 555 1212',
+    completedSessions: 24,
+    totalClientFees: 240000,
+    trainerCutPercentage: 60,
+    trainerEarnings: 144000,
+    gymCutEarnings: 96000,
+    rating: 4.9,
+    status: 'pending_biweekly_payout',
+  },
+  {
+    trainerId: 'trainer_amaka',
+    trainerName: 'Coach Amaka Peters',
+    specialty: 'HIIT & Female Conditioning',
+    phone: '0803 111 4455',
+    completedSessions: 18,
+    totalClientFees: 180000,
+    trainerCutPercentage: 60,
+    trainerEarnings: 108000,
+    gymCutEarnings: 72000,
+    rating: 5.0,
+    status: 'pending_biweekly_payout',
+  },
+  {
+    trainerId: 'trainer_segun',
+    trainerName: 'Coach Segun Balogun',
+    specialty: 'Combat Boxing & Calisthenics',
+    phone: '0812 888 9900',
+    completedSessions: 12,
+    totalClientFees: 120000,
+    trainerCutPercentage: 60,
+    trainerEarnings: 72000,
+    gymCutEarnings: 48000,
+    rating: 4.8,
+    status: 'pending_biweekly_payout',
+  },
+];
+
+export const INITIAL_RETAIL_ITEMS: RetailItem[] = [
+  {
+    id: 'ret_energy',
+    name: 'Monster Energy Drink (500ml)',
+    category: 'beverage',
+    price: 1500,
+    inStock: 34,
+    icon: '⚡',
+  },
+  {
+    id: 'ret_water',
+    name: 'Eva Natural Water (750ml)',
+    category: 'beverage',
+    price: 300,
+    inStock: 78,
+    icon: '💧',
+  },
+  {
+    id: 'ret_daily',
+    name: 'Daily Single Workout Pass',
+    category: 'daily_pass',
+    price: 2500,
+    inStock: 999,
+    icon: '🎟️',
+  },
+  {
+    id: 'ret_shake',
+    name: 'Gold Standard Whey Protein Shake',
+    category: 'supplement',
+    price: 3500,
+    inStock: 22,
+    icon: '🥤',
+  },
+  {
+    id: 'ret_towel',
+    name: 'FitLedger Sweat Towel (Rental)',
+    category: 'merchandise',
+    price: 1000,
+    inStock: 15,
+    icon: '🥋',
   },
 ];
