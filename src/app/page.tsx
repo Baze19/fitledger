@@ -34,6 +34,8 @@ import {
   AlertOctagon,
   CreditCard,
   Users,
+  ChevronDown,
+  HelpCircle,
 } from 'lucide-react';
 
 export default function CommercialLandingPage() {
@@ -41,6 +43,7 @@ export default function CommercialLandingPage() {
   const [memberCount, setMemberCount] = useState(250);
   const [avgFee, setAvgFee] = useState(30000);
   const [activeCompareTab, setActiveCompareTab] = useState<'paper' | 'fitledger'>('fitledger');
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   // Interactive Hero Scanner Simulator State
   const [simScenario, setSimScenario] = useState<'valid' | 'expired' | 'fake_alert'>('valid');
@@ -178,6 +181,7 @@ export default function CommercialLandingPage() {
             <a href="#case-studies" className="hover:text-white transition">Lagos Proof</a>
             <a href="#features" className="hover:text-white transition">Features</a>
             <a href="#pricing" className="hover:text-white transition">Pricing</a>
+            <a href="#faq" className="hover:text-white transition">FAQs</a>
           </nav>
 
           {/* Right Action: Sign In */}
@@ -979,6 +983,71 @@ export default function CommercialLandingPage() {
             </Link>
           </div>
 
+      {/* ============================================================== */}
+      {/* 7.5 FREQUENTLY ASKED OPERATIONAL QUESTIONS (LAGOS GYM FAQS)    */}
+      {/* ============================================================== */}
+      <section id="faq" className="max-w-4xl mx-auto px-6 py-16 w-full space-y-10">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-bold uppercase tracking-wider">
+            <HelpCircle className="w-3.5 h-3.5" /> Founder FAQs
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">Frequently Asked Operational Questions</h2>
+          <p className="text-xs sm:text-sm text-zinc-400 max-w-xl mx-auto">
+            Practical answers to common operational questions asked by gym owners across Lagos, Abuja, and Port Harcourt.
+          </p>
+        </div>
+
+        <div className="space-y-3.5">
+          {[
+            {
+              q: 'What happens if NEPA takes light or MTN/Airtel internet drops at the counter?',
+              a: 'FitLedger runs on an offline-first architecture. The front-desk terminal continues scanning member barcodes, validating active passes, and registering walk-in payments locally without interruption. Once power or network reconnects, all visits and cash entries sync automatically to the cloud ledger with zero data loss.',
+            },
+            {
+              q: 'Do our gym members have to download a heavy 80MB mobile app from the App Store?',
+              a: 'No! Over 80% of gym members refuse to download yet another app that clutters their phone storage. FitLedger uses a zero-install WhatsApp PWA. When a member registers, an automated WhatsApp message delivers their personal barcode pass and monthly attendance calendar, which opens instantly in 0.5 seconds on any smartphone browser.',
+            },
+            {
+              q: 'Can our receptionists delete transaction logs, alter check-ins, or steal cash unnoticed?',
+              a: 'No. Every single check-in, walk-in day pass, beverage sale, and manual entry override is permanently stamped with the active receptionist’s 4-digit shift PIN. At shift handover and closing, the terminal requires a physical cash drawer count and flags any discrepancy immediately to the Owner WhatsApp AI summary. Staff cannot delete or edit history.',
+            },
+            {
+              q: 'How does the Anti-Fake Alert engine protect our gym from fraudulent transfer screenshots?',
+              a: 'Members often flash doctored bank debit SMS screenshots during peak 6 PM rush. FitLedger assigns your gym a dedicated Providus or Wema virtual account. When a customer claims they transferred, the terminal cross-checks the direct bank feed API. If ₦0 has actually settled, access is blocked and the fraud risk is permanently stamped in the owner audit feed.',
+            },
+            {
+              q: 'Can FitLedger connect to our physical turnstile tripod gate or magnetic door lock?',
+              a: 'Yes! FitLedger includes a built-in hardware relay bridge (/api/hardware/relay) compatible with standard turnstile tripod gates (ZKTeco, Hikvision, Turnstar) via a low-cost ESP32 or network relay controller. When a valid barcode is scanned, the terminal pulses the relay in 1.8 seconds to unlock the gate.',
+            },
+          ].map((item, idx) => {
+            const isOpen = openFaqIndex === idx;
+            return (
+              <div
+                key={idx}
+                className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden transition"
+              >
+                <button
+                  onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-extrabold text-sm text-white hover:text-red-400 transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-zinc-500">0{idx + 1}.</span>
+                    <span>{item.q}</span>
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-zinc-400 flex-shrink-0 transition-transform duration-200 ${
+                      isOpen ? 'rotate-180 text-red-500' : ''
+                    }`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 text-xs text-zinc-400 leading-relaxed border-t border-zinc-800/80 pt-3">
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

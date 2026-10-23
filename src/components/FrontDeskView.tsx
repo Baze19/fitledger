@@ -18,10 +18,14 @@ import {
   Volume2,
   Sparkles,
   Zap,
+  Receipt,
+  Printer,
+  Send,
 } from 'lucide-react';
 
 export function FrontDeskView() {
   const {
+    activeTenant,
     activeScanResult,
     checkInMember,
     registerMember,
@@ -52,6 +56,15 @@ export function FrontDeskView() {
   const [selectedRetailItem, setSelectedRetailItem] = useState(retailItems[0]?.id || 'ret_energy');
   const [retailPayMethod, setRetailPayMethod] = useState<PaymentMethod>('cash');
   const [retailSuccess, setRetailSuccess] = useState<string | null>(null);
+  const [lastReceipt, setLastReceipt] = useState<{
+    txId: string;
+    itemName: string;
+    amount: number;
+    paymentMethod: PaymentMethod;
+    staffName: string;
+    staffPin: string;
+    timestamp: string;
+  } | null>(null);
 
   // Audio synthesis using browser Web Audio API
   const playChime = (type: 'success' | 'error') => {
@@ -130,10 +143,18 @@ export function FrontDeskView() {
     const item = retailItems.find((r) => r.id === selectedRetailItem);
     if (!item) return;
 
-    sellRetailItem(item.id, retailPayMethod);
+    const tx = sellRetailItem(item.id, retailPayMethod);
     playChime('success');
-    setRetailSuccess(`✓ Sold ${item.name} for ₦${item.price.toLocaleString()} via ${retailPayMethod.toUpperCase()}! Cash drawer updated.`);
-    setTimeout(() => setRetailSuccess(null), 4500);
+    setLastReceipt({
+      txId: tx.reference,
+      itemName: item.name,
+      amount: item.price,
+      paymentMethod: retailPayMethod,
+      staffName: activeStaff.fullName,
+      staffPin: activeStaff.pin,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    });
+    setRetailSuccess(`✓ Sold ${item.name} for ₦${item.price.toLocaleString()} via ${retailPayMethod.toUpperCase()}! Cash in drawer updated.`);
   };
 
   return (
@@ -551,6 +572,43 @@ export function FrontDeskView() {
                 >
                   Confirm Sale & Log in Cash Drawer
                 </button>
+
+                {/* 1-Tap Digital Receipt & WhatsApp Share */}
+                {lastReceipt && (
+                  <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-2xl space-y-2.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-emerald-400" />
+                        <span className="font-bold text-white">Receipt #{lastReceipt.txId}</span>
+                      </div>
+                      <span className="font-mono text-emerald-400 font-bold">₦{lastReceipt.amount.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const text = `*${activeTenant.name} - Official E-Receipt* 🧾\n\nRef: #${lastReceipt.txId}\nItem: ${lastReceipt.itemName}\nTotal: ₦${lastReceipt.amount.toLocaleString()}\nPayment: ${lastReceipt.paymentMethod.replace('_', ' ').toUpperCase()}\nCashier: ${lastReceipt.staffName} (PIN ${lastReceipt.staffPin})\nTime: ${lastReceipt.timestamp}\n\n_Thank you for training with us!_`;
+                          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                        }}
+                        className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Send WhatsApp Receipt</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-[11px] transition flex items-center gap-1.5 border border-zinc-700 cursor-pointer"
+                        title="Print thermal counter slip"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
