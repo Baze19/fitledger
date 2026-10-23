@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useGym } from '@/context/gym-context';
 import { useParams } from 'next/navigation';
 import { QrCode, Calendar, Dumbbell, Users, CreditCard, CheckCircle2, Sparkles, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function MemberPassPage() {
+function MemberPassContent() {
   const params = useParams();
   const code = (params?.code as string) || '124253';
   const { members, renewMember } = useGym();
@@ -273,5 +273,13 @@ export default function MemberPassPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function MemberPassPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center font-sans text-sm">Loading member pass...</div>}>
+      <MemberPassContent />
+    </Suspense>
   );
 }

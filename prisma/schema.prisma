@@ -1,0 +1,170 @@
+// FitLedger Enterprise Multi-Tenant Prisma Schema
+// Target Database: PostgreSQL (Supabase / AWS RDS / Neon)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Gym Organization / Tenant (Multi-Tenant fleet)
+model Tenant {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  location     String
+  ownerName    String
+  ownerPhone   String
+  planTier     String        @default("Growth") // Starter | Growth | Enterprise
+  monthlyFee   Float         @default(45000)
+  status       String        @default("active") // active | trial | suspended
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  branches     Branch[]
+  users        User[]
+  members      Member[]
+  plans        Plan[]
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+}
+
+// 2. Gym Branches / Locations
+model Branch {
+  id         String     @id @default(uuid())
+  tenantId   String
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchName String
+  address    String?
+  phone      String?
+  createdAt  DateTime   @default(now())
+
+  users      User[]
+  members    Member[]
+  checkIns   CheckIn[]
+}
+
+// 3. Staff Users (Owners, Managers, Receptionists, Trainers)
+model User {
+  id          String     @id @default(uuid())
+  tenantId    String
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId    String?
+  branch      Branch?    @relation(fields: [branchId], references: [id])
+  fullName    String
+  email       String?    @unique
+  phone       String
+  role        String     @default("receptionist") // owner | manager | receptionist | trainer
+  pin         String     // 4-digit shift login PIN
+  shiftStatus String     @default("off_duty") // on_duty | off_duty
+  createdAt   DateTime   @default(now())
+
+  checkInsVerified CheckIn[] @relation("VerifiedCheckIns")
+  transactions     Transaction[]
+}
+
+// 4. Membership Plans
+model Plan {
+  id                 String         @id @default(uuid())
+  tenantId           String
+  tenant             Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name               String
+  type               String         @default("monthly") // daily | monthly | quarterly | annual
+  price              Float          // in NGN
+  durationDays       Int
+  ptSessionsIncluded Int            @default(0)
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+
+  subscriptions      Subscription[]
+}
+
+// 5. Gym Members
+model Member {
+  id                   String         @id @default(uuid())
+  tenantId             String
+  tenant               Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId             String?
+  branch               Branch?        @relation(fields: [branchId], references: [id])
+  memberCode           String         // e.g. "124253"
+  fullName             String
+  phoneNumber          String         // WhatsApp phone
+  email                String?
+  photoUrl             String?
+  status               String         @default("active") // active | expired | frozen
+  lockerNumber         String?
+  totalVisitsThisMonth Int            @default(0)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  subscriptions        Subscription[]
+  checkIns             CheckIn[]
+  transactions         Transaction[]
+
+  @@unique([tenantId, memberCode])
+  @@unique([tenantId, phoneNumber])
+}
+
+// 6. Subscriptions
+model Subscription {
+  id                  String     @id @default(uuid())
+  memberId            String
+  member              Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId              String
+  plan                Plan       @relation(fields: [planId], references: [id])
+  startDate           DateTime
+  endDate             DateTime
+  remainingPtSessions Int        @default(0)
+  status              String     @default("active") // active | expired | frozen
+  createdAt           DateTime   @default(now())
+
+  transactions        Transaction[]
+}
+
+// 7. Check-In Logs (Sub-2s Counter Attendance)
+model CheckIn {
+  id                  String     @id @default(uuid())
+  branchId            String?
+  branch              Branch?    @relation(fields: [branchId], references: [id])
+  memberId            String
+  member              Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  method              String     @default("qr_scan") // qr_scan | phone_lookup | manual_override
+  status              String     @default("allowed") // allowed | denied
+  denialReason        String?
+  verifiedByUserId    String?
+  verifiedByUser      User?      @relation("VerifiedCheckIns", fields: [verifiedByUserId], references: [id])
+  checkedInAt         DateTime   @default(now())
+}
+
+// 8. Financial Transactions (Anti-Theft Shift Ledger)
+model Transaction {
+  id                  String        @id @default(uuid())
+  tenantId            String
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId            String
+  member              Member        @relation(fields: [memberId], references: [id])
+  subscriptionId      String?
+  subscription        Subscription? @relation(fields: [subscriptionId], references: [id])
+  amount              Float
+  paymentMethod       String        // bank_transfer | pos_card | cash | paystack_online
+  reference           String
+  status              String        @default("verified") // verified | flagged
+  receivedByUserId    String?
+  receivedByUser      User?         @relation(fields: [receivedByUserId], references: [id])
+  createdAt           DateTime      @default(now())
+}
+
+// 9. Anti-Theft Permanent Audit Trail
+model AuditLog {
+  id             String     @id @default(uuid())
+  tenantId       String
+  tenant         Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorStaffName String
+  action         String
+  details        String
+  severity       String     @default("info") // info | warning | alert
+  createdAt      DateTime   @default(now())
+}
