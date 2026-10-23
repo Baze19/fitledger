@@ -32,6 +32,7 @@ interface GymContextType {
     gymName?: string;
     userName?: string;
   };
+  updateOwnerPassword: (emailOrPhone: string, newPass: string) => boolean;
 
   members: Member[];
   plans: Plan[];
@@ -269,6 +270,40 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       success: false,
       message: 'Account not recognized. Please verify your email, phone, or 4-digit Shift PIN.',
     };
+  };
+
+  const updateOwnerPassword = (emailOrPhone: string, newPass: string): boolean => {
+    const key = emailOrPhone.trim().toLowerCase();
+    const cleanPhone = emailOrPhone.replace(/\s+/g, '');
+    let matched = false;
+
+    setOwners((prev) =>
+      prev.map((o) => {
+        if (
+          o.email.toLowerCase() === key ||
+          o.phone.replace(/\s+/g, '') === cleanPhone
+        ) {
+          matched = true;
+          return { ...o, password: newPass };
+        }
+        return o;
+      })
+    );
+
+    if (matched) {
+      const audit: AuditLog = {
+        id: `aud_${Date.now()}`,
+        tenantId: activeTenant.id,
+        timestamp: 'Just now',
+        actorStaffName: 'Gym Owner',
+        action: 'Security: Password Updated',
+        details: `Credentials updated for account [${emailOrPhone}]. Security refresh logged.`,
+        severity: 'info',
+      };
+      setAuditLogs((prev) => [audit, ...prev]);
+    }
+
+    return matched;
   };
 
   // Owner adds new Front-Desk Staff with 4-digit PIN
@@ -708,6 +743,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         exitImpersonation,
         onboardGymTenant,
         authenticateUser,
+        updateOwnerPassword,
         members,
         plans,
         staffList,

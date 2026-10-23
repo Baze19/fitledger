@@ -18,6 +18,8 @@ import {
   AlertCircle,
   Phone,
   Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -43,9 +45,19 @@ export default function OwnerPage() {
     members,
     isFounderImpersonating,
     exitImpersonation,
+    updateOwnerPassword,
+    activeOwner,
   } = useGym();
 
   const [activeTab, setActiveTab] = useState<'finance' | 'staff' | 'members' | 'whatsapp'>('finance');
+
+  // Change Password Modal
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [newOwnerPassword, setNewOwnerPassword] = useState('');
+  const [confirmOwnerPassword, setConfirmOwnerPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState<string | null>(null);
+  const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
 
   // Staff Modal
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
@@ -170,12 +182,22 @@ export default function OwnerPage() {
             <span>🖥️ Front-Desk Terminal</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
-          <Link
-            href="/admin"
-            className="px-3.5 py-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/50 text-purple-300 hover:text-white transition flex items-center gap-1.5"
+          <button
+            onClick={() => {
+              setIsChangePasswordOpen(true);
+              setPasswordChangeSuccess(null);
+              setPasswordChangeError(null);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
           >
-            <span>⚡ Super Admin</span>
-            <ExternalLink className="w-3.5 h-3.5" />
+            <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+            <span>Change Password</span>
+          </button>
+          <Link
+            href="/login"
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-red-950/60 border border-zinc-800 hover:border-red-900 text-zinc-400 hover:text-red-300 transition flex items-center gap-1.5"
+          >
+            <span>Sign Out</span>
           </Link>
         </div>
       </div>
@@ -644,6 +666,126 @@ export default function OwnerPage() {
                 Create Staff & Send WhatsApp PIN
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Owner Password Modal */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 sm:p-7 max-w-md w-full text-white space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div>
+                <h3 className="font-black text-base flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-amber-400" />
+                  <span>Update Owner Workspace Password</span>
+                </h3>
+                <p className="text-xs text-zinc-400">{activeTenant.name} • {activeTenant.ownerName}</p>
+              </div>
+              <button
+                onClick={() => setIsChangePasswordOpen(false)}
+                className="text-zinc-400 hover:text-white p-1 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {passwordChangeSuccess ? (
+              <div className="space-y-4 py-2">
+                <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl text-xs text-emerald-400 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block">Password Successfully Updated!</span>
+                    <span>Your new master owner password is active immediately.</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsChangePasswordOpen(false)}
+                  className="w-full py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setPasswordChangeError(null);
+
+                  if (newOwnerPassword.length < 4) {
+                    setPasswordChangeError('Password must be at least 4 characters.');
+                    return;
+                  }
+                  if (newOwnerPassword !== confirmOwnerPassword) {
+                    setPasswordChangeError('Passwords do not match.');
+                    return;
+                  }
+
+                  const targetId = activeOwner?.email || activeTenant.ownerPhone;
+                  const success = updateOwnerPassword(targetId, newOwnerPassword);
+
+                  if (success) {
+                    setPasswordChangeSuccess('Password updated successfully.');
+                    setNewOwnerPassword('');
+                    setConfirmOwnerPassword('');
+                  } else {
+                    setPasswordChangeError('Could not locate owner record to update.');
+                  }
+                }}
+                className="space-y-4 text-xs"
+              >
+                {passwordChangeError && (
+                  <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl text-red-400 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{passwordChangeError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">New Owner Password</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      required
+                      value={newOwnerPassword}
+                      onChange={(e) => setNewOwnerPassword(e.target.value)}
+                      placeholder="Enter new master password"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white pr-10 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-3 text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Confirm New Password</label>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={confirmOwnerPassword}
+                    onChange={(e) => setConfirmOwnerPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                  />
+                </div>
+
+                <div className="bg-zinc-900 border border-zinc-800/80 p-3 rounded-xl text-[11px] text-zinc-400">
+                  ℹ️ This updates your master login password across all devices. Front-desk staff PINs remain untouched.
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs transition shadow-lg shadow-amber-600/30 cursor-pointer"
+                >
+                  Save New Password
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
