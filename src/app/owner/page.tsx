@@ -41,6 +41,8 @@ export default function OwnerPage() {
     addStaff,
     deactivateStaff,
     members,
+    isFounderImpersonating,
+    exitImpersonation,
   } = useGym();
 
   const [activeTab, setActiveTab] = useState<'finance' | 'staff' | 'members' | 'whatsapp'>('finance');
@@ -116,6 +118,30 @@ export default function OwnerPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-8 space-y-6 font-sans">
       
+      {/* Founder Root Debug Banner */}
+      {isFounderImpersonating && (
+        <div className="bg-gradient-to-r from-purple-950 via-indigo-950 to-purple-950 border border-purple-500/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xl animate-fade-in">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-lg flex-shrink-0">
+              👑
+            </span>
+            <div>
+              <p className="font-extrabold text-white text-sm">Founder Root Access: Inspecting {activeTenant.name}</p>
+              <p className="text-purple-300 text-[11px]">
+                You are currently impersonating this gym workspace as Super Admin Abiodun. You can troubleshoot staff PINs, review audit logs, and simulate member check-ins.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin"
+            onClick={exitImpersonation}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold rounded-xl transition shadow-md shadow-purple-600/30 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+          >
+            ← Return to Super Admin HQ
+          </Link>
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
         <div>

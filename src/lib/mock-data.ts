@@ -1,4 +1,4 @@
-import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant } from '@/types';
+import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, OwnerAccount } from '@/types';
 
 export const INITIAL_TENANTS: GymTenant[] = [
   {
@@ -392,5 +392,44 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     action: 'Shift Handover Reconciliation',
     details: 'Handed over ₦15,000 physical cash to Mary Okafor. System discrepancy: ₦0.00.',
     severity: 'info',
+  },
+];
+
+export const INITIAL_OWNERS: OwnerAccount[] = [
+  {
+    id: 'owner_tunde',
+    tenantId: 'tenant_ikorodu',
+    fullName: 'Chief Tunde Adeleke',
+    email: 'tunde@fitledger.ng',
+    phone: '0802 345 6789',
+    password: 'fitledger2026',
+    role: 'owner',
+  },
+  {
+    id: 'owner_emeka',
+    tenantId: 'tenant_lekki',
+    fullName: 'Emeka Alabi',
+    email: 'emeka@ironbase.ng',
+    phone: '0803 999 8811',
+    password: 'ironbase2026',
+    role: 'owner',
+  },
+  {
+    id: 'owner_rasheed',
+    tenantId: 'tenant_surulere',
+    fullName: 'Alhaji Rasheed Bello',
+    email: 'rasheed@hardcoregym.ng',
+    phone: '0805 111 2233',
+    password: 'hardcore2026',
+    role: 'owner',
+  },
+  {
+    id: 'owner_kemi',
+    tenantId: 'tenant_ikeja',
+    fullName: 'Dr. (Mrs) Kemi Coker',
+    email: 'kemi@apexathletic.ng',
+    phone: '0812 444 5566',
+    password: 'apex2026',
+    role: 'owner',
   },
 ];

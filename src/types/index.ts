@@ -111,3 +111,13 @@ export interface ShiftSummary {
   overridesCount: number;
   isLocked: boolean;
 }
+
+export interface OwnerAccount {
+  id: string;
+  tenantId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  password?: string;
+  role: 'owner';
+}

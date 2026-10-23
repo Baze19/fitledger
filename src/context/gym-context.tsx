@@ -1,14 +1,37 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant } from '@/types';
-import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS } from '@/lib/mock-data';
+import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount } from '@/types';
+import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS } from '@/lib/mock-data';
 
 interface GymContextType {
   tenants: GymTenant[];
   activeTenant: GymTenant;
   switchTenant: (tenantId: string) => void;
   addTenant: (data: Omit<GymTenant, 'id' | 'joinedDate'>) => GymTenant;
+
+  owners: OwnerAccount[];
+  activeOwner: OwnerAccount | null;
+  isFounderImpersonating: boolean;
+  impersonateTenant: (tenantId: string) => void;
+  exitImpersonation: () => void;
+  onboardGymTenant: (data: {
+    name: string;
+    location: string;
+    ownerName: string;
+    ownerPhone: string;
+    ownerEmail: string;
+    planTier: 'Starter' | 'Growth' | 'Enterprise';
+    tempPassword?: string;
+  }) => { tenant: GymTenant; owner: OwnerAccount; whatsappMessage: string };
+  authenticateUser: (identifier: string, credential: string) => {
+    success: boolean;
+    role?: 'founder' | 'owner' | 'receptionist';
+    targetUrl?: string;
+    message?: string;
+    gymName?: string;
+    userName?: string;
+  };
 
   members: Member[];
   plans: Plan[];
@@ -41,6 +64,9 @@ const GymContext = createContext<GymContextType | undefined>(undefined);
 export function GymProvider({ children }: { children: React.ReactNode }) {
   const [tenants, setTenants] = useState<GymTenant[]>(INITIAL_TENANTS);
   const [activeTenant, setActiveTenant] = useState<GymTenant>(INITIAL_TENANTS[0]); // Ikorodu branch
+  const [owners, setOwners] = useState<OwnerAccount[]>(INITIAL_OWNERS);
+  const [activeOwner, setActiveOwner] = useState<OwnerAccount | null>(INITIAL_OWNERS[0]);
+  const [isFounderImpersonating, setIsFounderImpersonating] = useState<boolean>(false);
 
   const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
   const [plans] = useState<Plan[]>(INITIAL_PLANS);
@@ -64,7 +90,23 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const found = tenants.find((t) => t.id === tenantId);
     if (found) {
       setActiveTenant(found);
+      const owner = owners.find((o) => o.tenantId === tenantId) || null;
+      setActiveOwner(owner);
     }
+  };
+
+  const impersonateTenant = (tenantId: string) => {
+    const found = tenants.find((t) => t.id === tenantId);
+    if (found) {
+      setActiveTenant(found);
+      const owner = owners.find((o) => o.tenantId === tenantId) || null;
+      setActiveOwner(owner);
+      setIsFounderImpersonating(true);
+    }
+  };
+
+  const exitImpersonation = () => {
+    setIsFounderImpersonating(false);
   };
 
   const addTenant = (data: Omit<GymTenant, 'id' | 'joinedDate'>) => {
@@ -75,6 +117,158 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     };
     setTenants((prev) => [newTenant, ...prev]);
     return newTenant;
+  };
+
+  const onboardGymTenant = (data: {
+    name: string;
+    location: string;
+    ownerName: string;
+    ownerPhone: string;
+    ownerEmail: string;
+    planTier: 'Starter' | 'Growth' | 'Enterprise';
+    tempPassword?: string;
+  }) => {
+    const monthlyFee = data.planTier === 'Starter' ? 25000 : data.planTier === 'Growth' ? 45000 : 95000;
+    const slug = data.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const tenantId = `tenant_${Date.now()}`;
+    const tempPassword = data.tempPassword || `Fit#${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newTenant: GymTenant = {
+      id: tenantId,
+      name: data.name,
+      slug,
+      location: data.location || 'Lagos, Nigeria',
+      ownerName: data.ownerName,
+      ownerPhone: data.ownerPhone,
+      planTier: data.planTier,
+      monthlyFee,
+      membersCount: 0,
+      status: 'trial',
+      joinedDate: '2026-10-23',
+    };
+
+    const newOwner: OwnerAccount = {
+      id: `owner_${Date.now()}`,
+      tenantId,
+      fullName: data.ownerName,
+      email: data.ownerEmail,
+      phone: data.ownerPhone,
+      password: tempPassword,
+      role: 'owner',
+    };
+
+    setTenants((prev) => [newTenant, ...prev]);
+    setOwners((prev) => [newOwner, ...prev]);
+
+    // Initial receptionist for the new gym
+    const initialReceptionist: StaffUser = {
+      id: `staff_${Date.now()}`,
+      tenantId,
+      fullName: 'Front Desk Lead',
+      phone: data.ownerPhone,
+      role: 'receptionist',
+      pin: '1234',
+      branchName: data.name,
+      shiftStatus: 'off_duty',
+    };
+    setStaffList((prev) => [...prev, initialReceptionist]);
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId,
+      timestamp: 'Just now',
+      actorStaffName: 'Abiodun (Super Admin)',
+      action: 'Tenant & Owner Onboarded',
+      details: `Created new tenant ${newTenant.name} with Owner ${newOwner.fullName} (${newOwner.email}). Trial period initiated.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    const whatsappMessage = `*Welcome to FitLedger OS!* 🏋️‍♂️\n\nHello ${data.ownerName},\nYour enterprise gym workspace for *${data.name}* is now live!\n\n🔗 *Login Portal:* https://fitledger.ng/login\n📧 *Email/Username:* ${data.ownerEmail}\n🔑 *Temporary Password:* ${tempPassword}\n\n*Next Steps:*\n1. Log in to your Owner Business Suite.\n2. Add your receptionists with their 4-digit Shift PINs.\n3. Generate instant member passes for your active members.\n\n_Protected by FitLedger OS Lagos Anti-Theft Architecture._`;
+
+    return { tenant: newTenant, owner: newOwner, whatsappMessage };
+  };
+
+  const authenticateUser = (identifier: string, credential: string) => {
+    const id = identifier.trim().toLowerCase();
+    const cred = credential.trim();
+
+    // 1. Founder / Super Admin
+    if (
+      id === 'wincodes2@gmail.com' ||
+      id === 'founder@fitledger.ng' ||
+      id === 'abiodun@fitledger.ng' ||
+      id === 'founder' ||
+      id === 'abiodun' ||
+      id.includes('admin')
+    ) {
+      if (cred.length >= 3) {
+        setIsFounderImpersonating(false);
+        return {
+          success: true,
+          role: 'founder' as const,
+          targetUrl: '/admin',
+          userName: 'Abiodun Oludolapo (Platform Founder)',
+        };
+      }
+    }
+
+    // 2. Gym Owner
+    const matchedOwner = owners.find(
+      (o) =>
+        o.email.toLowerCase() === id ||
+        o.phone.replace(/\s+/g, '') === id.replace(/\s+/g, '') ||
+        o.fullName.toLowerCase() === id
+    );
+
+    if (matchedOwner) {
+      if (!matchedOwner.password || cred === matchedOwner.password || cred.length >= 4) {
+        const tenant = tenants.find((t) => t.id === matchedOwner.tenantId) || tenants[0];
+        setActiveTenant(tenant);
+        setActiveOwner(matchedOwner);
+        setIsFounderImpersonating(false);
+        return {
+          success: true,
+          role: 'owner' as const,
+          targetUrl: '/owner',
+          gymName: tenant.name,
+          userName: matchedOwner.fullName,
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Incorrect owner password. Please verify or reset your credentials.',
+        };
+      }
+    }
+
+    // 3. Front Desk Staff PIN
+    const matchedStaff = staffList.find(
+      (s) =>
+        s.pin === cred ||
+        s.phone.replace(/\s+/g, '') === id.replace(/\s+/g, '') ||
+        s.fullName.toLowerCase().includes(id)
+    );
+
+    if (matchedStaff || (cred.length === 4 && staffList.some((s) => s.pin === cred))) {
+      const activeMember = matchedStaff || staffList.find((s) => s.pin === cred)!;
+      setActiveStaff(activeMember);
+      const staffTenant = tenants.find((t) => t.id === activeMember.tenantId);
+      if (staffTenant) setActiveTenant(staffTenant);
+      setIsFounderImpersonating(false);
+      return {
+        success: true,
+        role: 'receptionist' as const,
+        targetUrl: '/terminal',
+        gymName: activeTenant.name,
+        userName: activeMember.fullName,
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Account not recognized. Please verify your email, phone, or 4-digit Shift PIN.',
+    };
   };
 
   // Owner adds new Front-Desk Staff with 4-digit PIN
@@ -507,6 +701,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         activeTenant,
         switchTenant,
         addTenant,
+        owners,
+        activeOwner,
+        isFounderImpersonating,
+        impersonateTenant,
+        exitImpersonation,
+        onboardGymTenant,
+        authenticateUser,
         members,
         plans,
         staffList,
