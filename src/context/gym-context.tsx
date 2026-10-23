@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, PaymentMethod } from '@/types';
-import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS } from '@/lib/mock-data';
+import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod } from '@/types';
+import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES } from '@/lib/mock-data';
 
 interface GymContextType {
   tenants: GymTenant[];
@@ -62,9 +62,12 @@ interface GymContextType {
   bankTransfers: BankTransferVerification[];
   verifyTransferManually: (id: string, staffPin: string) => void;
   trainerCommissions: TrainerCommission[];
-  payoutTrainer: (trainerId: string) => void;
   retailItems: RetailItem[];
+  stockDeliveries: StockDelivery[];
   sellRetailItem: (itemId: string, paymentMethod: PaymentMethod) => Transaction;
+  addRetailItem: (item: Omit<RetailItem, 'id'>) => RetailItem;
+  restockItem: (itemId: string, unitsAdded: number, costPerUnit: number, supplier: string) => void;
+  reconcileStockCount: (itemId: string, physicalCount: number, notes?: string) => { discrepancy: number; isBalanced: boolean };
 }
 
 const GymContext = createContext<GymContextType | undefined>(undefined);
@@ -86,6 +89,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const [bankTransfers, setBankTransfers] = useState<BankTransferVerification[]>(INITIAL_BANK_TRANSFERS);
   const [trainerCommissions, setTrainerCommissions] = useState<TrainerCommission[]>(INITIAL_TRAINER_COMMISSIONS);
   const [retailItems, setRetailItems] = useState<RetailItem[]>(INITIAL_RETAIL_ITEMS);
+  const [stockDeliveries, setStockDeliveries] = useState<StockDelivery[]>(INITIAL_STOCK_DELIVERIES);
 
   const [activeScanResult, setActiveScanResult] = useState<{
     member?: Member;
@@ -397,6 +401,100 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [audit, ...prev]);
 
     return newTx;
+  };
+
+  const addRetailItem = (itemData: Omit<RetailItem, 'id'>): RetailItem => {
+    const newItem: RetailItem = {
+      ...itemData,
+      id: `ret_${Date.now()}`,
+    };
+    setRetailItems((prev) => [...prev, newItem]);
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: 'Gym Owner',
+      action: 'Inventory: New SKU Added',
+      details: `Added new pro-shop item "${newItem.name}" at ₦${newItem.price.toLocaleString()} (Cost: ₦${newItem.costPrice.toLocaleString()}). Initial Stock: ${newItem.inStock} units.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    return newItem;
+  };
+
+  const restockItem = (itemId: string, unitsAdded: number, costPerUnit: number, supplier: string) => {
+    const item = retailItems.find((r) => r.id === itemId);
+    if (!item) return;
+
+    setRetailItems((prev) =>
+      prev.map((r) =>
+        r.id === itemId
+          ? {
+              ...r,
+              inStock: r.inStock + unitsAdded,
+              costPrice: costPerUnit,
+              supplierName: supplier,
+              lastRestockedDate: '2026-10-23',
+            }
+          : r
+      )
+    );
+
+    const totalCost = unitsAdded * costPerUnit;
+    const delivery: StockDelivery = {
+      id: `del_${Date.now()}`,
+      tenantId: activeTenant.id,
+      itemId,
+      itemName: item.name,
+      unitsAdded,
+      costPerUnit,
+      totalCost,
+      supplier,
+      timestamp: 'Just now',
+      receivedByStaffName: activeStaff.fullName || 'Gym Manager',
+    };
+    setStockDeliveries((prev) => [delivery, ...prev]);
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: 'Gym Owner / Shift Lead',
+      action: 'Inventory: Supplier Delivery Received',
+      details: `Received +${unitsAdded} units of ${item.name} from "${supplier}". Unit Cost: ₦${costPerUnit.toLocaleString()} (Total Delivery: ₦${totalCost.toLocaleString()}). In-Stock now: ${item.inStock + unitsAdded}.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  const reconcileStockCount = (itemId: string, physicalCount: number, notes?: string) => {
+    const item = retailItems.find((r) => r.id === itemId);
+    if (!item) return { discrepancy: 0, isBalanced: true };
+
+    const discrepancy = physicalCount - item.inStock;
+    const isBalanced = discrepancy === 0;
+
+    setRetailItems((prev) =>
+      prev.map((r) => (r.id === itemId ? { ...r, inStock: physicalCount } : r))
+    );
+
+    const lostNaira = Math.abs(discrepancy) * item.price;
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeStaff.fullName || 'Shift Lead',
+      action: isBalanced ? 'Stock Audit: Balanced' : 'ALERT: Inventory Shrinkage Flagged',
+      details: isBalanced
+        ? `Stock audit for ${item.name} balanced perfectly at ${physicalCount} units.`
+        : `DISCREPANCY on ${item.name}! Expected in fridge: ${item.inStock}, Physical count: ${physicalCount}. Missing: ${Math.abs(discrepancy)} units (₦${lostNaira.toLocaleString()} revenue leakage). Notes: "${notes || 'Counter handover audit'}".`,
+      severity: isBalanced ? 'info' : 'alert',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    return { discrepancy, isBalanced };
   };
 
   // Owner adds new Front-Desk Staff with 4-digit PIN
@@ -861,7 +959,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         trainerCommissions,
         payoutTrainer,
         retailItems,
+        stockDeliveries,
         sellRetailItem,
+        addRetailItem,
+        restockItem,
+        reconcileStockCount,
       }}
     >
       {children}

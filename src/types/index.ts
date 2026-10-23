@@ -154,7 +154,24 @@ export interface RetailItem {
   id: string;
   name: string;
   category: 'beverage' | 'supplement' | 'daily_pass' | 'merchandise';
-  price: number;
-  inStock: number;
+  costPrice: number; // Wholesale unit cost in NGN
+  price: number; // Counter selling price in NGN
+  inStock: number; // Current physical units
+  lowStockThreshold: number; // Warning threshold (e.g. 10)
+  supplierName?: string;
+  lastRestockedDate?: string;
   icon: string;
+}
+
+export interface StockDelivery {
+  id: string;
+  tenantId: string;
+  itemId: string;
+  itemName: string;
+  unitsAdded: number;
+  costPerUnit: number;
+  totalCost: number;
+  supplier: string;
+  timestamp: string;
+  receivedByStaffName: string;
 }

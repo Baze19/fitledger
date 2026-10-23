@@ -30,6 +30,14 @@ import {
   Clock,
   ArrowUpRight,
   Download,
+  Package,
+  Boxes,
+  PlusCircle,
+  RefreshCw,
+  Store,
+  Receipt,
+  Truck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -61,9 +69,14 @@ export default function OwnerPage() {
     verifyTransferManually,
     trainerCommissions,
     payoutTrainer,
+    retailItems,
+    stockDeliveries,
+    addRetailItem,
+    restockItem,
+    reconcileStockCount,
   } = useGym();
 
-  const [activeTab, setActiveTab] = useState<'finance' | 'staff' | 'trainers' | 'churn' | 'members' | 'whatsapp'>('finance');
+  const [activeTab, setActiveTab] = useState<'finance' | 'inventory' | 'trainers' | 'churn' | 'staff' | 'members' | 'whatsapp'>('finance');
 
   // Change Password Modal
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -88,6 +101,37 @@ export default function OwnerPage() {
 
   // Win-Back broadcast state
   const [winBackSuccess, setWinBackSuccess] = useState<string | null>(null);
+
+  // Inventory Modals & Form State
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
+  const [restockItemId, setRestockItemId] = useState(retailItems[0]?.id || 'ret_water');
+  const [restockUnits, setRestockUnits] = useState(24);
+  const [restockCostPerUnit, setRestockCostPerUnit] = useState(160);
+  const [restockSupplier, setRestockSupplier] = useState('NBC Coca-Cola Wholesaler, Ikorodu');
+  const [restockSuccess, setRestockSuccess] = useState<string | null>(null);
+
+  const [isAddSkuModalOpen, setIsAddSkuModalOpen] = useState(false);
+  const [newSkuName, setNewSkuName] = useState('');
+  const [newSkuCategory, setNewSkuCategory] = useState<'beverage' | 'supplement' | 'daily_pass' | 'merchandise'>('beverage');
+  const [newSkuCost, setNewSkuCost] = useState(200);
+  const [newSkuPrice, setNewSkuPrice] = useState(400);
+  const [newSkuStock, setNewSkuStock] = useState(24);
+  const [newSkuThreshold, setNewSkuThreshold] = useState(10);
+  const [newSkuSupplier, setNewSkuSupplier] = useState('');
+  const [newSkuIcon, setNewSkuIcon] = useState('📦');
+  const [skuCreatedSuccess, setSkuCreatedSuccess] = useState<string | null>(null);
+
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditItemId, setAuditItemId] = useState(retailItems[0]?.id || 'ret_water');
+  const [auditPhysicalCount, setAuditPhysicalCount] = useState(0);
+  const [auditNotes, setAuditNotes] = useState('');
+  const [auditResult, setAuditResult] = useState<{ discrepancy: number; isBalanced: boolean } | null>(null);
+
+  // Computed Inventory Valuation
+  const totalStockRetailValue = retailItems.reduce((sum, r) => sum + r.price * r.inStock, 0);
+  const totalStockCostValue = retailItems.reduce((sum, r) => sum + r.costPrice * r.inStock, 0);
+  const projectedRetailProfit = Math.max(0, totalStockRetailValue - totalStockCostValue);
+  const lowStockCount = retailItems.filter((r) => r.inStock <= r.lowStockThreshold && r.category !== 'daily_pass').length;
 
   // WhatsApp Chat Simulator
   const [inputQuery, setInputQuery] = useState('');
@@ -261,13 +305,29 @@ export default function OwnerPage() {
           <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{trainerCommissions.length}</span>
         </button>
         <button
+          onClick={() => setActiveTab('inventory')}
+          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'inventory' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <Package className="w-3.5 h-3.5 text-blue-400" />
+          <span>3. Pro-Shop & Inventory</span>
+          {lowStockCount > 0 ? (
+            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+              {lowStockCount} Low
+            </span>
+          ) : (
+            <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{retailItems.length}</span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('churn')}
           className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'churn' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
           }`}
         >
           <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-          <span>3. At-Risk Churn Radar</span>
+          <span>4. At-Risk Churn Radar</span>
           <span className="bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded-full text-[10px] font-bold">{atRiskMembers.length}</span>
         </button>
         <button
@@ -276,7 +336,7 @@ export default function OwnerPage() {
             activeTab === 'staff' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
           }`}
         >
-          <span>4. Staff & Shift PINs</span>
+          <span>5. Staff & Shift PINs</span>
           <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{staffList.length}</span>
         </button>
         <button
@@ -285,7 +345,7 @@ export default function OwnerPage() {
             activeTab === 'members' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
           }`}
         >
-          <span>5. Member Directory</span>
+          <span>6. Member Directory</span>
           <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{members.length}</span>
         </button>
         <button
@@ -295,7 +355,7 @@ export default function OwnerPage() {
           }`}
         >
           <Bot className="w-3.5 h-3.5 text-purple-400" />
-          <span>6. WhatsApp AI Auditor</span>
+          <span>7. WhatsApp AI Auditor</span>
         </button>
       </div>
 
@@ -572,7 +632,266 @@ export default function OwnerPage() {
       )}
 
       {/* ============================================================== */}
-      {/* TAB 3: AT-RISK CHURN RADAR & WHATSAPP WIN-BACK                 */}
+      {/* TAB 3: PRO-SHOP & INVENTORY MANAGEMENT SUITE                   */}
+      {/* ============================================================== */}
+      {activeTab === 'inventory' && (
+        <div className="space-y-6">
+          
+          {/* Header & Quick Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900 border border-zinc-800 p-6 rounded-3xl">
+            <div className="space-y-1">
+              <h2 className="text-base font-black text-white flex items-center gap-2">
+                <Package className="w-5 h-5 text-blue-400" />
+                <span>Pro-Shop Inventory & Anti-Shrinkage Ledger</span>
+              </h2>
+              <p className="text-xs text-zinc-400">
+                Live beverage fridge and front-desk retail counter tracking. Every sale automatically debits stock and updates shift cash drawer totals.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  setRestockSuccess(null);
+                  setIsRestockModalOpen(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs transition flex items-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
+              >
+                <Truck className="w-4 h-4" />
+                <span>Receive Supplier Delivery</span>
+              </button>
+              <button
+                onClick={() => {
+                  setSkuCreatedSuccess(null);
+                  setIsAddSkuModalOpen(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition flex items-center gap-2 border border-zinc-700 cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4 text-emerald-400" />
+                <span>Add Product SKU</span>
+              </button>
+              <button
+                onClick={() => {
+                  setAuditResult(null);
+                  setIsAuditModalOpen(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition flex items-center gap-2 border border-zinc-700 cursor-pointer"
+              >
+                <SlidersHorizontal className="w-4 h-4 text-amber-400" />
+                <span>Audit Stock Count</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Top 4 Financial Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Retail Stock Valuation
+              </span>
+              <p className="text-2xl font-black text-white font-mono">
+                ₦{totalStockRetailValue.toLocaleString()}
+              </p>
+              <span className="text-[11px] text-zinc-400 block">Current shelf retail potential</span>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Wholesale Cost Basis
+              </span>
+              <p className="text-2xl font-black text-zinc-300 font-mono">
+                ₦{totalStockCostValue.toLocaleString()}
+              </p>
+              <span className="text-[11px] text-zinc-500 block">Paid out to distributors</span>
+            </div>
+
+            <div className="bg-zinc-900 border border-emerald-500/30 p-5 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                Projected Gross Profit
+              </span>
+              <p className="text-2xl font-black text-emerald-400 font-mono">
+                +₦{projectedRetailProfit.toLocaleString()}
+              </p>
+              <span className="text-[11px] text-emerald-400/80 block">
+                {totalStockRetailValue > 0 ? Math.round((projectedRetailProfit / totalStockRetailValue) * 100) : 0}% Projected Net Margin
+              </span>
+            </div>
+
+            <div className={`p-5 rounded-3xl space-y-1 border ${
+              lowStockCount > 0
+                ? 'bg-amber-950/20 border-amber-500/40'
+                : 'bg-zinc-900 border-zinc-800'
+            }`}>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                Low-Stock Threshold Alert
+              </span>
+              <p className="text-2xl font-black text-white font-mono">
+                {lowStockCount} <span className="text-xs text-zinc-400 font-normal">SKUs Below Min</span>
+              </p>
+              <span className="text-[11px] text-amber-300/80 block">
+                {lowStockCount > 0 ? 'Restock recommended before weekend' : 'All items well stocked'}
+              </span>
+            </div>
+          </div>
+
+          {/* Main Inventory Table */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-xl">
+            <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-white text-sm">Active SKU Catalog ({retailItems.length} Products)</h3>
+                <p className="text-xs text-zinc-500">Physical stock updated in real time as front desk clicks items</p>
+              </div>
+              <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full">
+                Front-Desk Bar Sync: Active
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-zinc-950 text-zinc-400 font-bold border-b border-zinc-800">
+                  <tr>
+                    <th className="py-3 px-5">Product SKU</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Current In-Stock</th>
+                    <th className="py-3 px-4">Wholesale Cost</th>
+                    <th className="py-3 px-4">Counter Selling Price</th>
+                    <th className="py-3 px-4">Margin %</th>
+                    <th className="py-3 px-4">Primary Distributor</th>
+                    <th className="py-3 px-4 text-right">Quick Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                  {retailItems.map((item) => {
+                    const margin = item.price - item.costPrice;
+                    const marginPct = item.price > 0 ? Math.round((margin / item.price) * 100) : 0;
+                    const isLow = item.inStock <= item.lowStockThreshold && item.category !== 'daily_pass';
+                    const isOut = item.inStock === 0 && item.category !== 'daily_pass';
+
+                    return (
+                      <tr key={item.id} className="hover:bg-zinc-800/40 transition">
+                        <td className="py-3.5 px-5">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{item.icon}</span>
+                            <div>
+                              <span className="font-bold text-white block">{item.name}</span>
+                              <span className="text-[10px] text-zinc-500 font-mono">ID: {item.id}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
+                            {item.category.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono">
+                          {item.category === 'daily_pass' ? (
+                            <span className="text-emerald-400 font-bold">Unlimited (Virtual)</span>
+                          ) : isOut ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 text-[11px] font-bold">
+                              ● 0 Units (Out of Stock)
+                            </span>
+                          ) : isLow ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[11px] font-bold">
+                              ⚠️ {item.inStock} Left (Low Stock)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
+                              ✓ {item.inStock} Units In Stock
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-zinc-400">
+                          ₦{item.costPrice.toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-white font-bold">
+                          ₦{item.price.toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono">
+                          <span className="text-emerald-400 font-bold">+{marginPct}%</span>
+                          <span className="text-[10px] text-zinc-500 block">(+₦{margin.toLocaleString()}/ea)</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-[11px] text-zinc-400">
+                          {item.supplierName || 'General Distributor'}
+                          {item.lastRestockedDate && (
+                            <span className="text-[10px] text-zinc-500 block font-mono">Restocked: {item.lastRestockedDate}</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setRestockItemId(item.id);
+                                setRestockCostPerUnit(item.costPrice);
+                                setRestockSupplier(item.supplierName || 'NBC Wholesaler, Ikorodu');
+                                setRestockSuccess(null);
+                                setIsRestockModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-blue-400 hover:text-blue-300 font-bold text-[11px] transition cursor-pointer"
+                              title="Add crates from supplier"
+                            >
+                              + Restock
+                            </button>
+                            <button
+                              onClick={() => {
+                                setAuditItemId(item.id);
+                                setAuditPhysicalCount(item.inStock);
+                                setAuditResult(null);
+                                setIsAuditModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 hover:text-amber-300 font-bold text-[11px] transition cursor-pointer"
+                              title="Count fridge / detect missing drinks"
+                            >
+                              Count
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Supplier Delivery Audit Log */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-blue-400" />
+                  <span>Recent Wholesale Supplier Deliveries</span>
+                </h3>
+                <p className="text-xs text-zinc-500">Audit trail of stock received at reception or store room</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {stockDeliveries.map((del) => (
+                <div key={del.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-white">{del.itemName}</span>
+                      <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full font-bold">
+                        +{del.unitsAdded} Units
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400">Supplier: {del.supplier}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono">Received by {del.receivedByStaffName} • {del.timestamp}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-white font-mono font-bold block">₦{del.totalCost.toLocaleString()}</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">@ ₦{del.costPerUnit}/ea</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB 4: AT-RISK CHURN RADAR & WHATSAPP WIN-BACK                 */}
       {/* ============================================================== */}
       {activeTab === 'churn' && (
         <div className="space-y-6">
@@ -1110,6 +1429,458 @@ export default function OwnerPage() {
                 >
                   Save New Password
                 </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* INVENTORY MODAL 1: RESTOCK / RECEIVE SUPPLIER DELIVERY        */}
+      {/* ============================================================== */}
+      {isRestockModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Truck className="w-5 h-5 text-blue-400" />
+                <h3 className="font-black text-white text-base">Receive Supplier Delivery</h3>
+              </div>
+              <button
+                onClick={() => setIsRestockModalOpen(false)}
+                className="text-zinc-500 hover:text-white text-xs font-bold px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {restockSuccess ? (
+              <div className="p-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                </div>
+                <h4 className="font-extrabold text-white text-sm">Delivery Logged to Inventory</h4>
+                <p className="text-xs text-zinc-300">{restockSuccess}</p>
+                <button
+                  onClick={() => setIsRestockModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  restockItem(restockItemId, restockUnits, restockCostPerUnit, restockSupplier);
+                  const item = retailItems.find((r) => r.id === restockItemId);
+                  setRestockSuccess(`Successfully added +${restockUnits} units of ${item?.name || 'stock'}. Total cost: ₦${(restockUnits * restockCostPerUnit).toLocaleString()}.`);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Select Product to Restock</label>
+                  <select
+                    value={restockItemId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setRestockItemId(id);
+                      const matched = retailItems.find((r) => r.id === id);
+                      if (matched) {
+                        setRestockCostPerUnit(matched.costPrice);
+                        if (matched.supplierName) setRestockSupplier(matched.supplierName);
+                      }
+                    }}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {retailItems.filter((r) => r.category !== 'daily_pass').map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.icon} {r.name} (Current: {r.inStock} in stock)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Units Received</label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={restockUnits}
+                      onChange={(e) => setRestockUnits(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Wholesale Cost / Unit (₦)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={restockCostPerUnit}
+                      onChange={(e) => setRestockCostPerUnit(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Supplier / Wholesaler Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={restockSupplier}
+                    onChange={(e) => setRestockSupplier(e.target.value)}
+                    placeholder="e.g. NBC Wholesaler, Ikorodu depot"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="bg-zinc-900 border border-zinc-800 p-3.5 rounded-2xl flex items-center justify-between text-xs font-mono">
+                  <span className="text-zinc-400">Total Delivery Invoice:</span>
+                  <span className="text-white font-extrabold text-sm">₦{(restockUnits * restockCostPerUnit).toLocaleString()}</span>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs transition shadow-lg shadow-blue-600/30 cursor-pointer"
+                >
+                  Confirm Delivery & Credit Stock
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* INVENTORY MODAL 2: ADD NEW PRODUCT SKU                         */}
+      {/* ============================================================== */}
+      {isAddSkuModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-black text-white text-base">Add New Product SKU</h3>
+              </div>
+              <button
+                onClick={() => setIsAddSkuModalOpen(false)}
+                className="text-zinc-500 hover:text-white text-xs font-bold px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {skuCreatedSuccess ? (
+              <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                </div>
+                <h4 className="font-extrabold text-white text-sm">Product SKU Created!</h4>
+                <p className="text-xs text-zinc-300">{skuCreatedSuccess}</p>
+                <button
+                  onClick={() => setIsAddSkuModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  addRetailItem({
+                    name: newSkuName,
+                    category: newSkuCategory,
+                    costPrice: newSkuCost,
+                    price: newSkuPrice,
+                    inStock: newSkuStock,
+                    lowStockThreshold: newSkuThreshold,
+                    supplierName: newSkuSupplier || 'Direct Wholesaler',
+                    lastRestockedDate: '2026-10-23',
+                    icon: newSkuIcon,
+                  });
+                  setSkuCreatedSuccess(`Added ${newSkuName} at ₦${newSkuPrice.toLocaleString()} (${newSkuStock} units). Appears on Front-Desk terminal immediately.`);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Product Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newSkuName}
+                    onChange={(e) => setNewSkuName(e.target.value)}
+                    placeholder="e.g. Fearless Energy Drink (500ml)"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Category</label>
+                    <select
+                      value={newSkuCategory}
+                      onChange={(e) => setNewSkuCategory(e.target.value as any)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="beverage">Beverage</option>
+                      <option value="supplement">Supplement</option>
+                      <option value="merchandise">Towel / Gear</option>
+                      <option value="daily_pass">Daily Pass</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Display Icon</label>
+                    <input
+                      type="text"
+                      value={newSkuIcon}
+                      onChange={(e) => setNewSkuIcon(e.target.value)}
+                      placeholder="e.g. ⚡, 💧, 🥤, 🥋, 🍎"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white text-center text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Wholesale Cost (₦)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={newSkuCost}
+                      onChange={(e) => setNewSkuCost(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Counter Selling Price (₦)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={newSkuPrice}
+                      onChange={(e) => setNewSkuPrice(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Opening Stock (Units)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={newSkuStock}
+                      onChange={(e) => setNewSkuStock(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Low-Stock Alert Level</label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={newSkuThreshold}
+                      onChange={(e) => setNewSkuThreshold(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Primary Supplier Name</label>
+                  <input
+                    type="text"
+                    value={newSkuSupplier}
+                    onChange={(e) => setNewSkuSupplier(e.target.value)}
+                    placeholder="e.g. Chi Limited Depot / Balogun Market"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-2xl flex justify-between items-center text-xs">
+                  <span className="text-zinc-400">Unit Profit Margin:</span>
+                  <span className="text-emerald-400 font-bold font-mono">
+                    +₦{(newSkuPrice - newSkuCost).toLocaleString()} ({newSkuPrice > 0 ? Math.round(((newSkuPrice - newSkuCost) / newSkuPrice) * 100) : 0}%)
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition shadow-lg shadow-emerald-600/30 cursor-pointer"
+                >
+                  Save SKU to Catalog & POS Terminal
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* INVENTORY MODAL 3: PHYSICAL COUNT & SHRINKAGE AUDITOR         */}
+      {/* ============================================================== */}
+      {isAuditModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-5 h-5 text-amber-400" />
+                <h3 className="font-black text-white text-base">Physical Stock Count Audit</h3>
+              </div>
+              <button
+                onClick={() => setIsAuditModalOpen(false)}
+                className="text-zinc-500 hover:text-white text-xs font-bold px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {auditResult ? (
+              <div className={`p-6 rounded-2xl text-center space-y-3 border ${
+                auditResult.isBalanced
+                  ? 'bg-emerald-500/10 border-emerald-500/30'
+                  : 'bg-red-500/10 border-red-500/30'
+              }`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${
+                  auditResult.isBalanced
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {auditResult.isBalanced ? <Check className="w-6 h-6 stroke-[3]" /> : <AlertTriangle className="w-6 h-6" />}
+                </div>
+                <h4 className="font-extrabold text-white text-sm">
+                  {auditResult.isBalanced ? 'Stock Balanced Perfectly!' : 'Discrepancy Stamped in Shift Audit'}
+                </h4>
+                <p className="text-xs text-zinc-300">
+                  {auditResult.isBalanced
+                    ? 'Physical count matches logged sales 100%. No inventory shrinkage detected.'
+                    : `Discrepancy of ${auditResult.discrepancy} units recorded. Shift lead PIN and incident logged to permanent audit ledger.`}
+                </p>
+                <button
+                  onClick={() => setIsAuditModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition cursor-pointer"
+                >
+                  Close Audit
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const res = reconcileStockCount(auditItemId, auditPhysicalCount, auditNotes);
+                  setAuditResult(res);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Select Item Being Audited</label>
+                  <select
+                    value={auditItemId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setAuditItemId(id);
+                      const matched = retailItems.find((r) => r.id === id);
+                      if (matched) setAuditPhysicalCount(matched.inStock);
+                    }}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {retailItems.filter((r) => r.category !== 'daily_pass').map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.icon} {r.name} (Expected in system: {r.inStock})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {(() => {
+                  const targetItem = retailItems.find((r) => r.id === auditItemId) || retailItems[0];
+                  const diff = auditPhysicalCount - targetItem.inStock;
+                  const leakageNaira = Math.abs(diff) * targetItem.price;
+
+                  return (
+                    <>
+                      <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">System Expected Count:</span>
+                          <strong className="text-white font-mono">{targetItem.inStock} units in fridge</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Retail Value per Unit:</span>
+                          <span className="text-zinc-300 font-mono">₦{targetItem.price.toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-zinc-300 block mb-1">
+                          Actual Physical Count in Fridge / Shelf
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          required
+                          value={auditPhysicalCount}
+                          onChange={(e) => setAuditPhysicalCount(Number(e.target.value))}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono text-base focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      {/* Discrepancy Live Alert Box */}
+                      <div className={`p-3.5 rounded-2xl border text-xs ${
+                        diff === 0
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                          : 'bg-red-500/10 border-red-500/30 text-red-400'
+                      }`}>
+                        {diff === 0 ? (
+                          <div className="flex items-center gap-2 font-bold">
+                            <Check className="w-4 h-4" />
+                            <span>100% Balanced • 0 Missing Units</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 font-black">
+                              <AlertTriangle className="w-4 h-4" />
+                              <span>⚠️ SHRINKAGE: {Math.abs(diff)} Units {diff < 0 ? 'Missing / Stolen' : 'Surplus'}</span>
+                            </div>
+                            <p className="text-[11px] text-red-300">
+                              Estimated front-desk cash leakage: <strong>₦{leakageNaira.toLocaleString()}</strong>. Will be logged against on-duty receptionist PIN.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-zinc-300 block mb-1">Audit Notes / Reason</label>
+                        <input
+                          type="text"
+                          value={auditNotes}
+                          onChange={(e) => setAuditNotes(e.target.value)}
+                          placeholder="e.g. Afternoon shift handover count"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs transition shadow-lg shadow-amber-600/30 cursor-pointer"
+                      >
+                        Save Physical Count & Log Reconciliation
+                      </button>
+                    </>
+                  );
+                })()}
               </form>
             )}
           </div>
