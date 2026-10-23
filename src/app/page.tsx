@@ -24,6 +24,16 @@ import {
   ChevronRight,
   AlertTriangle,
   Radio,
+  Volume2,
+  VolumeX,
+  ScanLine,
+  Star,
+  Quote,
+  Check,
+  XCircle,
+  AlertOctagon,
+  CreditCard,
+  Users,
 } from 'lucide-react';
 
 export default function CommercialLandingPage() {
@@ -31,6 +41,61 @@ export default function CommercialLandingPage() {
   const [memberCount, setMemberCount] = useState(250);
   const [avgFee, setAvgFee] = useState(30000);
   const [activeCompareTab, setActiveCompareTab] = useState<'paper' | 'fitledger'>('fitledger');
+
+  // Interactive Hero Scanner Simulator State
+  const [simScenario, setSimScenario] = useState<'valid' | 'expired' | 'fake_alert'>('valid');
+  const [simAudioEnabled, setSimAudioEnabled] = useState(true);
+  const [simIsScanning, setSimIsScanning] = useState(false);
+
+  // Web Audio API Synthesizer for instant audible feedback
+  const playSimSound = (type: 'success' | 'blocked') => {
+    if (!simAudioEnabled || typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (type === 'success') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      } else {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(110, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      }
+    } catch {
+      // Audio autoplay policy fallback
+    }
+  };
+
+  const handleSimTrigger = (scenario: 'valid' | 'expired' | 'fake_alert') => {
+    setSimIsScanning(true);
+    setTimeout(() => {
+      setSimScenario(scenario);
+      setSimIsScanning(false);
+      if (scenario === 'valid') {
+        playSimSound('success');
+      } else {
+        playSimSound('blocked');
+      }
+    }, 350);
+  };
 
   const monthlyGrossRevenue = memberCount * avgFee;
   // Conservative estimate: 10% lost to cash leakage, unrecorded walk-ins, and forgotten expirations
@@ -107,11 +172,12 @@ export default function CommercialLandingPage() {
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-zinc-400">
+          <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-zinc-400">
+            <a href="#simulator" className="hover:text-white transition">Simulator</a>
+            <a href="#calculator" className="hover:text-white transition">ROI Model</a>
+            <a href="#case-studies" className="hover:text-white transition">Lagos Proof</a>
             <a href="#features" className="hover:text-white transition">Features</a>
-            <a href="#calculator" className="hover:text-white transition">ROI Calculator</a>
-            <a href="#comparison" className="hover:text-white transition">Before vs After</a>
-            <a href="#pricing" className="hover:text-white transition">Pricing (NGN)</a>
+            <a href="#pricing" className="hover:text-white transition">Pricing</a>
           </nav>
 
           {/* Right Action: Sign In */}
@@ -191,6 +257,248 @@ export default function CommercialLandingPage() {
             <span className="text-[10px] uppercase font-bold text-zinc-500 block">Owner Peace of Mind</span>
             <span className="text-2xl font-black text-purple-400">9 PM Report</span>
             <span className="text-[11px] text-zinc-400 block mt-0.5">Daily WhatsApp AI closure</span>
+          </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* INTERACTIVE HERO FRONT-DESK SCANNER & ANTI-THEFT SIMULATOR     */}
+        {/* ============================================================== */}
+        <div id="simulator" className="pt-10 max-w-4xl mx-auto relative z-10 text-left scroll-mt-24">
+          <div className="bg-gradient-to-b from-zinc-900 via-zinc-900/95 to-zinc-950 border-2 border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+            
+            {/* Top Simulator Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-zinc-800/80 gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-xs font-black uppercase tracking-wider text-white">
+                    Front-Desk Terminal Simulator
+                  </span>
+                  <span className="text-[10px] bg-red-600/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                    v2.4 Anti-Theft
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Test the exact counter speed & anti-theft lockout gym owners experience across Lagos.
+                </p>
+              </div>
+
+              {/* Sound Toggle */}
+              <button
+                onClick={() => setSimAudioEnabled(!simAudioEnabled)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                  simAudioEnabled
+                    ? 'bg-zinc-800 text-emerald-400 border-zinc-700'
+                    : 'bg-zinc-900 text-zinc-500 border-zinc-800'
+                }`}
+                title="Toggle Web Audio scan chimes"
+              >
+                {simAudioEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5" />}
+                <span>{simAudioEnabled ? 'Audio Chimes: ON' : 'Audio: Muted'}</span>
+              </button>
+            </div>
+
+            {/* Interactive Scenario Buttons */}
+            <div className="pt-6 space-y-3">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                Click a test scenario below to simulate counter action:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <button
+                  onClick={() => handleSimTrigger('valid')}
+                  className={`p-3 rounded-2xl border text-left transition flex items-center justify-between ${
+                    simScenario === 'valid'
+                      ? 'bg-emerald-950/60 border-emerald-500/80 text-emerald-200 shadow-lg shadow-emerald-950/50'
+                      : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span className="text-xs font-bold text-white">1. Valid Member</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">1.8s Pass Check-In</p>
+                  </div>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                </button>
+
+                <button
+                  onClick={() => handleSimTrigger('expired')}
+                  className={`p-3 rounded-2xl border text-left transition flex items-center justify-between ${
+                    simScenario === 'expired'
+                      ? 'bg-red-950/60 border-red-500/80 text-red-200 shadow-lg shadow-red-950/50'
+                      : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                      <span className="text-xs font-bold text-white">2. Expired Member</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">Lockout & Due Fee</p>
+                  </div>
+                  <XCircle className="w-4 h-4 text-red-400" />
+                </button>
+
+                <button
+                  onClick={() => handleSimTrigger('fake_alert')}
+                  className={`p-3 rounded-2xl border text-left transition flex items-center justify-between ${
+                    simScenario === 'fake_alert'
+                      ? 'bg-amber-950/60 border-amber-500/80 text-amber-200 shadow-lg shadow-amber-950/50'
+                      : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                      <span className="text-xs font-bold text-white">3. Fake Bank Alert</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">Direct API Rejection</p>
+                  </div>
+                  <AlertOctagon className="w-4 h-4 text-amber-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Simulated Terminal Screen Display */}
+            <div className="mt-6 bg-zinc-950 border border-zinc-800 rounded-2xl p-5 relative overflow-hidden">
+              
+              {simIsScanning ? (
+                <div className="py-12 text-center space-y-3">
+                  <div className="inline-flex p-3 rounded-full bg-red-500/10 text-red-400 animate-spin">
+                    <ScanLine className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-mono text-zinc-400 animate-pulse">
+                    Scanning QR Laser / Interrogating Direct Bank Virtual Feed...
+                  </p>
+                </div>
+              ) : simScenario === 'valid' ? (
+                /* Scenario 1: Valid */
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500 text-zinc-950 flex items-center justify-center font-black">
+                        <Check className="w-5 h-5 stroke-[3]" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
+                          ACCESS GRANTED — 1.8s VERIFIED
+                        </span>
+                        <p className="text-[11px] text-zinc-300">
+                          Turnstile Gate 1 Unlocked • Relay Signal Sent
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-800">
+                      SPEED: 1.82s
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Member Name</span>
+                      <span className="font-extrabold text-white text-sm">Funke Akindele</span>
+                      <span className="text-[10px] font-mono text-zinc-400 block mt-0.5">VIP Pass #124253</span>
+                    </div>
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Subscription Tier</span>
+                      <span className="font-extrabold text-emerald-400 text-sm">Annual VIP Gym Access</span>
+                      <span className="text-[10px] text-zinc-400 block mt-0.5">Expires 14 Dec 2026</span>
+                    </div>
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Front Desk Audit</span>
+                      <span className="font-extrabold text-white text-sm">Mary Okafor</span>
+                      <span className="text-[10px] font-mono text-zinc-400 block mt-0.5">Shift PIN #4092 Stamped</span>
+                    </div>
+                  </div>
+                </div>
+              ) : simScenario === 'expired' ? (
+                /* Scenario 2: Expired */
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-black">
+                        <Lock className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black text-red-400 uppercase tracking-wide">
+                          ENTRY BLOCKED — SUBSCRIPTION EXPIRED
+                        </span>
+                        <p className="text-[11px] text-zinc-300">
+                          Turnstile Gate Remains Locked • Cash Leakage Prevented
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-red-400 bg-red-950/80 px-2.5 py-1 rounded-lg border border-red-800">
+                      LEAKAGE STOPPED
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Member Name</span>
+                      <span className="font-extrabold text-white text-sm">Tunde Bakare</span>
+                      <span className="text-[10px] font-mono text-red-400 block mt-0.5">Expired 14 Days Ago</span>
+                    </div>
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Renewal Fee Due</span>
+                      <span className="font-extrabold text-red-400 text-sm">₦25,000 NGN</span>
+                      <span className="text-[10px] text-zinc-400 block mt-0.5">Monthly Standard Plan</span>
+                    </div>
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Instant Resolution</span>
+                      <span className="font-extrabold text-white text-sm">WhatsApp Pay Link</span>
+                      <span className="text-[10px] text-emerald-400 block mt-0.5">1-Tap Monnify/Card</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Scenario 3: Fake Alert */
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500 text-zinc-950 flex items-center justify-center font-black">
+                        <AlertOctagon className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black text-amber-400 uppercase tracking-wide">
+                          ALERT FRAUD INTERCEPTED — ₦0 RECEIVED
+                        </span>
+                        <p className="text-[11px] text-zinc-300">
+                          Direct Providus/Wema Virtual Account Feed: Transfer Not Settled
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-amber-400 bg-amber-950/80 px-2.5 py-1 rounded-lg border border-amber-800">
+                      ₦30,000 SAVED
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Payer on Fake SMS</span>
+                      <span className="font-extrabold text-white text-sm">Kenneth Eze</span>
+                      <span className="text-[10px] font-mono text-zinc-400 block mt-0.5">Claimed Zenith App SMS</span>
+                    </div>
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Gym Virtual Account</span>
+                      <span className="font-extrabold text-amber-400 text-sm">Providus #990234123</span>
+                      <span className="text-[10px] text-zinc-400 block mt-0.5">Settlement: 0 NGN Logged</span>
+                    </div>
+                    <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold block">Owner Action</span>
+                      <span className="font-extrabold text-white text-sm">Incident Flagged</span>
+                      <span className="text-[10px] text-red-400 block mt-0.5">Pushed to Owner Audit Feed</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
           </div>
         </div>
 
@@ -398,6 +706,129 @@ export default function CommercialLandingPage() {
             </div>
           </div>
         )}
+
+      </section>
+
+      {/* ============================================================== */}
+      {/* 5.5 LAGOS GYM CASE STUDIES & OPERATIONAL SOCIAL PROOF          */}
+      {/* ============================================================== */}
+      <section id="case-studies" className="max-w-7xl mx-auto px-6 py-16 w-full space-y-10">
+        
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-bold uppercase tracking-wider">
+            <Building className="w-3.5 h-3.5" /> Proven Lagos Deployments
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">Trusted by Commercial Gym Founders Across Lagos</h2>
+          <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl mx-auto">
+            From single-room neighborhood gyms in Ikorodu to 3-floor luxury athletic facilities in Lekki Phase 1, here is how FitLedger protects real bottom-line revenue.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* Case Study 1: Ikorodu */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-7 flex flex-col justify-between hover:border-zinc-700 transition space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                  +₦420,000 / mo Recovered
+                </span>
+                <div className="flex text-amber-400 gap-0.5">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                </div>
+              </div>
+
+              <Quote className="w-6 h-6 text-zinc-700" />
+              <p className="text-xs text-zinc-300 leading-relaxed italic">
+                &ldquo;Before FitLedger, our 3 receptionists operated on desk notebooks. We routinely had 35 to 40 unrecorded walk-ins every Saturday. Within 7 days of enforcing 4-digit PIN shift accountability, our reported cash collections jumped 48%. It is the best operational investment I made in 2026.&rdquo;
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-800/80 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-600 to-red-600 flex items-center justify-center font-black text-white text-sm shadow-md">
+                TA
+              </div>
+              <div>
+                <span className="font-extrabold text-white text-xs block">Chief Tunde Adeleke</span>
+                <span className="text-[10px] text-zinc-400 block">Founder, PowerHouse Fitness Hub (Ikorodu)</span>
+                <span className="text-[10px] text-emerald-400 font-semibold block mt-0.5">320 Active Members</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Case Study 2: Lekki Phase 1 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-7 flex flex-col justify-between hover:border-zinc-700 transition space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2.5 py-1 rounded-lg">
+                  100% Fake Alerts Blocked
+                </span>
+                <div className="flex text-amber-400 gap-0.5">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                </div>
+              </div>
+
+              <Quote className="w-6 h-6 text-zinc-700" />
+              <p className="text-xs text-zinc-300 leading-relaxed italic">
+                &ldquo;Lekki members love to flash fake bank transfer debit SMS when the front-desk is packed at 6 PM. FitLedger&apos;s direct Providus virtual account reconciliation stopped three fraudulent walk-ins in our first 10 days alone. Staff can no longer accept unverified transfers.&rdquo;
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-800/80 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-600 flex items-center justify-center font-black text-white text-sm shadow-md">
+                EA
+              </div>
+              <div>
+                <span className="font-extrabold text-white text-xs block">Engr. Emeka Alabi</span>
+                <span className="text-[10px] text-zinc-400 block">MD, IronBase Athletics Club (Lekki Phase 1)</span>
+                <span className="text-[10px] text-blue-400 font-semibold block mt-0.5">580 Active Members</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Case Study 3: Surulere */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-7 flex flex-col justify-between hover:border-zinc-700 transition space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-lg">
+                  100% Shift Accountability
+                </span>
+                <div className="flex text-amber-400 gap-0.5">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                </div>
+              </div>
+
+              <Quote className="w-6 h-6 text-zinc-700" />
+              <p className="text-xs text-zinc-300 leading-relaxed italic">
+                &ldquo;I frequently travel between Lagos and Abuja. With the daily 9 PM WhatsApp AI closing report, I see exact turnstile scans, POS receipts, and cash drawer counts before I sleep. My receptionists know everything is transparent.&rdquo;
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-800/80 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center font-black text-white text-sm shadow-md">
+                RB
+              </div>
+              <div>
+                <span className="font-extrabold text-white text-xs block">Alhaji Rasheed Balogun</span>
+                <span className="text-[10px] text-zinc-400 block">Founder, Barbell Republic (Surulere)</span>
+                <span className="text-[10px] text-purple-400 font-semibold block mt-0.5">410 Active Members</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
 
       </section>
 
