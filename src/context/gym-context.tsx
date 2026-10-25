@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod } from '@/types';
 import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES } from '@/lib/mock-data';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface GymContextType {
   tenants: GymTenant[];
@@ -69,6 +70,7 @@ interface GymContextType {
   addRetailItem: (item: Omit<RetailItem, 'id'>) => RetailItem;
   restockItem: (itemId: string, unitsAdded: number, costPerUnit: number, supplier: string) => void;
   reconcileStockCount: (itemId: string, physicalCount: number, notes?: string) => { discrepancy: number; isBalanced: boolean };
+  isCloudConnected: boolean;
 }
 
 const GymContext = createContext<GymContextType | undefined>(undefined);
@@ -101,6 +103,69 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     status: 'allowed',
     message: 'Active monthly VIP Pass (Expires in 18 days)',
   });
+
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(isSupabaseConfigured);
+
+  // Sync initial cloud data from Supabase if configured
+  useEffect(() => {
+    if (!supabase || !isSupabaseConfigured) return;
+
+    let isMounted = true;
+    async function fetchCloudData() {
+      try {
+        // 1. Fetch Members
+        const { data: cloudMembers, error: memErr } = await supabase!
+          .from('members')
+          .select('*');
+
+        if (!memErr && cloudMembers && cloudMembers.length > 0 && isMounted) {
+          const mapped: Member[] = cloudMembers.map((m: any) => ({
+            id: m.id,
+            tenantId: activeTenant.id,
+            memberCode: m.pass_code,
+            fullName: m.full_name,
+            phoneNumber: m.phone,
+            planName: m.plan_type,
+            subscriptionEndDate: m.expiry_date,
+            status: m.status === 'Active' ? 'active' : m.status === 'Expired' ? 'expired' : 'expiring_soon',
+            avatarUrl: m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            totalVisitsThisMonth: 12,
+            lastCheckIn: 'Recently',
+            visitDates: ['2026-10-18', '2026-10-20', '2026-10-22'],
+          }));
+          setMembers((prev) => {
+            const existingCodes = new Set(mapped.map((m) => m.memberCode));
+            const retained = prev.filter((p) => !existingCodes.has(p.memberCode));
+            return [...mapped, ...retained];
+          });
+          setIsCloudConnected(true);
+        }
+
+        // 2. Fetch Retail Inventory
+        const { data: cloudInventory, error: invErr } = await supabase!
+          .from('inventory_items')
+          .select('*');
+
+        if (!invErr && cloudInventory && cloudInventory.length > 0 && isMounted) {
+          const mappedRetail: RetailItem[] = cloudInventory.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            category: item.category === 'Drinks' ? 'drink' : item.category === 'Supplements' ? 'supplement' : 'gear',
+            price: Number(item.retail_price),
+            costPrice: Number(item.wholesale_cost),
+            inStock: item.stock_quantity,
+            reorderLevel: item.reorder_level || 10,
+          }));
+          setRetailItems(mappedRetail);
+        }
+      } catch (err) {
+        console.warn('Supabase initial fetch fallback to offline state:', err);
+      }
+    }
+
+    fetchCloudData();
+    return () => { isMounted = false; };
+  }, [activeTenant.id]);
 
   const switchTenant = (tenantId: string) => {
     const found = tenants.find((t) => t.id === tenantId);
@@ -401,6 +466,30 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     };
     setAuditLogs((prev) => [audit, ...prev]);
 
+    // Background Supabase cloud persistence
+    if (supabase && isSupabaseConfigured) {
+      supabase
+        .from('pos_transactions')
+        .insert({
+          item_name: item.name,
+          quantity: 1,
+          amount_paid: item.price,
+          cashier_pin: activeStaff.pin || '2045',
+          payment_method: paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'bank_transfer' ? 'Transfer' : 'POS Card',
+        })
+        .then(({ error }) => {
+          if (error) console.warn('Supabase retail tx insert fallback:', error.message);
+        });
+
+      supabase
+        .from('inventory_items')
+        .update({ stock_quantity: Math.max(0, item.inStock - 1) })
+        .eq('name', item.name)
+        .then(({ error }) => {
+          if (error) console.warn('Supabase stock decrement fallback:', error.message);
+        });
+    }
+
     return newTx;
   };
 
@@ -660,6 +749,19 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       message: `Verified! Active until ${found.subscriptionEndDate}`,
     });
 
+    // Background Supabase cloud persistence
+    if (supabase && isSupabaseConfigured) {
+      supabase
+        .from('attendance_logs')
+        .insert({
+          staff_pin: activeStaff.pin || '2045',
+          status: 'Valid Entry',
+        })
+        .then(({ error }) => {
+          if (error) console.warn('Supabase checkin insert fallback:', error.message);
+        });
+    }
+
     return { success: true, member: found };
   };
 
@@ -739,6 +841,37 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       status: 'allowed',
       message: `Registration complete! WhatsApp Pass dispatched to ${newMember.phoneNumber}`,
     });
+
+    // Background Supabase cloud persistence
+    if (supabase && isSupabaseConfigured) {
+      supabase
+        .from('members')
+        .insert({
+          full_name: data.fullName,
+          phone: data.phoneNumber,
+          plan_type: selectedPlan.name,
+          pass_code: newCode,
+          status: 'Active',
+          expiry_date: newMember.subscriptionEndDate,
+          avatar_url: newMember.photoUrl,
+        })
+        .then(({ error }) => {
+          if (error) console.warn('Supabase member insert fallback:', error.message);
+        });
+
+      supabase
+        .from('pos_transactions')
+        .insert({
+          item_name: `Registration: ${selectedPlan.name}`,
+          quantity: 1,
+          amount_paid: selectedPlan.price,
+          cashier_pin: activeStaff.pin || '2045',
+          payment_method: data.paymentMethod === 'cash' ? 'Cash' : data.paymentMethod === 'bank_transfer' ? 'Transfer' : 'POS Card',
+        })
+        .then(({ error }) => {
+          if (error) console.warn('Supabase reg tx insert fallback:', error.message);
+        });
+    }
 
     return newMember;
   };
@@ -965,6 +1098,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         addRetailItem,
         restockItem,
         reconcileStockCount,
+        isCloudConnected,
       }}
     >
       {children}
