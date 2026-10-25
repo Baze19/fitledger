@@ -125,13 +125,17 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
             memberCode: m.pass_code,
             fullName: m.full_name,
             phoneNumber: m.phone,
-            planName: m.plan_type,
-            subscriptionEndDate: m.expiry_date,
-            status: m.status === 'Active' ? 'active' : m.status === 'Expired' ? 'expired' : 'expiring_soon',
-            avatarUrl: m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            email: m.email || `${m.full_name.toLowerCase().replace(/\s+/g, '.')}@gymmember.ng`,
+            photoUrl: m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            status: m.status === 'Active' ? 'active' : 'expired',
+            joinedDate: '2026-10-22',
+            currentPlanId: 'plan_monthly_vip',
+            subscriptionStartDate: '2026-10-22',
+            subscriptionEndDate: m.expiry_date || '2026-11-21',
+            remainingPtSessions: 4,
             totalVisitsThisMonth: 12,
-            lastCheckIn: 'Recently',
             visitDates: ['2026-10-18', '2026-10-20', '2026-10-22'],
+            ptSessionDates: [],
           }));
           setMembers((prev) => {
             const existingCodes = new Set(mapped.map((m) => m.memberCode));
@@ -150,11 +154,12 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           const mappedRetail: RetailItem[] = cloudInventory.map((item: any) => ({
             id: item.id,
             name: item.name,
-            category: item.category === 'Drinks' ? 'drink' : item.category === 'Supplements' ? 'supplement' : 'gear',
-            price: Number(item.retail_price),
-            costPrice: Number(item.wholesale_cost),
-            inStock: item.stock_quantity,
-            reorderLevel: item.reorder_level || 10,
+            category: item.category === 'Drinks' ? 'beverage' : item.category === 'Supplements' ? 'supplement' : 'daily_pass',
+            costPrice: Number(item.wholesale_cost || 0),
+            price: Number(item.retail_price || 0),
+            inStock: Number(item.stock_quantity || 0),
+            lowStockThreshold: Number(item.reorder_level || 10),
+            icon: item.category === 'Drinks' ? 'Bottle' : item.category === 'Supplements' ? 'Zap' : 'Ticket',
           }));
           setRetailItems(mappedRetail);
         }
