@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useGym } from '@/context/gym-context';
 import { ManualOverrideModal } from '@/components/ManualOverrideModal';
 import { Member, Transaction, PaymentMethod } from '@/types';
+import { initializePaystackPayment } from '@/lib/paystack';
 import {
   Search,
   QrCode,
@@ -120,9 +121,49 @@ export function FrontDeskView() {
     }
   };
 
+  const handlePaystackDirectRenewal = (targetMember: Member) => {
+    initializePaystackPayment({
+      email: targetMember.email || 'member@fitledger.ng',
+      amountInNaira: 30000,
+      fullName: targetMember.fullName,
+      planName: 'Monthly Access Pass Renewal',
+      gymName: activeTenant.name,
+      onSuccess: (ref) => {
+        renewMember(targetMember.id, 'plan_monthly_std', 'paystack_online');
+        playChime('success');
+      },
+    });
+  };
+
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFullName || !newPhone) return;
+
+    const plan = plans.find((p) => p.id === newPlanId) || plans[1];
+
+    if (newPaymentMethod === 'paystack_online') {
+      initializePaystackPayment({
+        email: `${newFullName.toLowerCase().replace(/\s+/g, '.')}@gymmember.ng`,
+        amountInNaira: plan.price,
+        fullName: newFullName,
+        planName: plan.name,
+        gymName: activeTenant.name,
+        onSuccess: (ref) => {
+          const newMem = registerMember({
+            fullName: newFullName,
+            phoneNumber: newPhone,
+            planId: newPlanId,
+            paymentMethod: 'paystack_online',
+          });
+          playChime('success');
+          setRegSuccess(`✓ Registered ${newMem.fullName} (#${newMem.memberCode}) via Paystack! Ref: ${ref}`);
+          setNewFullName('');
+          setNewPhone('');
+          setTimeout(() => setRegSuccess(null), 5000);
+        },
+      });
+      return;
+    }
 
     const newMem = registerMember({
       fullName: newFullName,
@@ -142,6 +183,31 @@ export function FrontDeskView() {
     e.preventDefault();
     const item = retailItems.find((r) => r.id === selectedRetailItem);
     if (!item) return;
+
+    if (retailPayMethod === 'paystack_online') {
+      initializePaystackPayment({
+        email: 'walkin@fitledger.ng',
+        amountInNaira: item.price,
+        fullName: `Walk-in Guest (${item.name})`,
+        planName: item.name,
+        gymName: activeTenant.name,
+        onSuccess: (ref) => {
+          const tx = sellRetailItem(item.id, 'paystack_online');
+          playChime('success');
+          setLastReceipt({
+            txId: tx.reference,
+            itemName: item.name,
+            amount: item.price,
+            paymentMethod: 'paystack_online',
+            staffName: activeStaff.fullName,
+            staffPin: activeStaff.pin,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          });
+          setRetailSuccess(`✓ Sold ${item.name} for ₦${item.price.toLocaleString()} via Paystack! Ref: ${ref}`);
+        },
+      });
+      return;
+    }
 
     const tx = sellRetailItem(item.id, retailPayMethod);
     playChime('success');
@@ -320,6 +386,13 @@ export function FrontDeskView() {
                   </p>
 
                   <div className="flex flex-wrap gap-2.5 pt-3">
+                    <button
+                      onClick={() => handlePaystackDirectRenewal(activeScanResult.member!)}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-600/30 cursor-pointer"
+                    >
+                      <Zap className="w-4 h-4 text-yellow-300" /> Pay with Paystack (Card / USSD)
+                    </button>
+
                     <button
                       onClick={() => renewMember(activeScanResult.member!.id, 'plan_monthly_std', 'pos_card')}
                       className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 cursor-pointer"
@@ -547,19 +620,19 @@ export function FrontDeskView() {
 
                 <div>
                   <label className="font-semibold text-zinc-300 text-xs block mb-1">Customer Paid Via:</label>
-                  <div className="grid grid-cols-3 gap-1.5 text-xs">
-                    {(['cash', 'pos_card', 'bank_transfer'] as PaymentMethod[]).map((m) => (
+                  <div className="grid grid-cols-4 gap-1.5 text-xs">
+                    {(['cash', 'pos_card', 'bank_transfer', 'paystack_online'] as PaymentMethod[]).map((m) => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => setRetailPayMethod(m)}
-                        className={`py-2 rounded-xl border text-center font-bold text-[11px] transition cursor-pointer ${
+                        className={`py-2 rounded-xl border text-center font-bold text-[10px] transition cursor-pointer ${
                           retailPayMethod === m
                             ? 'bg-red-600 text-white border-red-500 shadow-md'
                             : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
                         }`}
                       >
-                        {m === 'cash' ? '💵 Cash' : m === 'pos_card' ? '💳 POS' : '📱 Transfer'}
+                        {m === 'cash' ? '💵 Cash' : m === 'pos_card' ? '💳 POS' : m === 'bank_transfer' ? '📱 Transfer' : '⚡ Paystack'}
                       </button>
                     ))}
                   </div>

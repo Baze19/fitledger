@@ -928,6 +928,33 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       };
       setAuditLogs((prev) => [audit, ...prev]);
 
+      // Background Supabase cloud persistence
+      if (supabase && isSupabaseConfigured) {
+        supabase
+          .from('pos_transactions')
+          .insert({
+            item_name: `Renewal: ${selectedPlan.name}`,
+            quantity: 1,
+            amount_paid: selectedPlan.price,
+            cashier_pin: activeStaff.pin || '2045',
+            payment_method: paymentMethod === 'paystack_online' ? 'Paystack Online' : paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'bank_transfer' ? 'Transfer' : 'POS Card',
+          })
+          .then(({ error }) => {
+            if (error) console.warn('Supabase renewal tx insert fallback:', error.message);
+          });
+
+        supabase
+          .from('members')
+          .update({
+            status: 'Active',
+            expiry_date: '2026-11-21',
+          })
+          .eq('pass_code', target.memberCode)
+          .then(({ error }) => {
+            if (error) console.warn('Supabase member renewal update fallback:', error.message);
+          });
+      }
+
       setActiveScanResult({
         member: { ...target, status: 'active', subscriptionEndDate: '2026-11-21' },
         status: 'allowed',

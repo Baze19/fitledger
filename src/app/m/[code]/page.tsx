@@ -3,7 +3,8 @@
 import React, { useState, Suspense } from 'react';
 import { useGym } from '@/context/gym-context';
 import { useParams } from 'next/navigation';
-import { QrCode, Calendar, Dumbbell, Users, CreditCard, CheckCircle2, Sparkles, ArrowLeft } from 'lucide-react';
+import { QrCode, Calendar, Dumbbell, Users, CreditCard, CheckCircle2, Sparkles, ArrowLeft, Zap } from 'lucide-react';
+import { initializePaystackPayment } from '@/lib/paystack';
 import Link from 'next/link';
 
 function MemberPassContent() {
@@ -14,6 +15,20 @@ function MemberPassContent() {
   const member = members.find((m) => m.memberCode === code) || members[0];
   const [showPtModal, setShowPtModal] = useState(false);
   const [ptBooked, setPtBooked] = useState(false);
+
+  const handleMemberPaystackRenewal = () => {
+    initializePaystackPayment({
+      email: member.email || 'member@fitledger.ng',
+      amountInNaira: 30000,
+      fullName: member.fullName,
+      planName: 'VIP All-Access Monthly Pass Renewal',
+      gymName: 'FitZone Elite Fitness',
+      onSuccess: (ref) => {
+        renewMember(member.id, 'plan_monthly_vip', 'paystack_online');
+        alert(`✓ Payment Confirmed via Paystack!\n\nRef: ${ref}\nYour VIP Membership has been extended by 30 days!`);
+      },
+    });
+  };
 
   const daysInOctober = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -120,11 +135,11 @@ function MemberPassContent() {
                 <span className="font-medium text-zinc-300">Refer</span>
               </div>
               <div
-                onClick={() => renewMember(member.id, 'plan_monthly_vip', 'paystack_online')}
-                className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-red-500 cursor-pointer transition"
+                onClick={handleMemberPaystackRenewal}
+                className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-emerald-500 cursor-pointer transition"
               >
-                <CreditCard className="w-5 h-5 text-emerald-400" />
-                <span className="font-medium text-zinc-300">Renew</span>
+                <Zap className="w-5 h-5 text-yellow-400" />
+                <span className="font-medium text-emerald-400">Paystack</span>
               </div>
             </div>
 
