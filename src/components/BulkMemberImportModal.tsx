@@ -41,6 +41,7 @@ export function BulkMemberImportModal({ isOpen, onClose }: BulkMemberImportModal
   const [importMode, setImportMode] = useState<'paste' | 'upload' | 'ocr'>('paste');
   const [rawText, setRawText] = useState(SAMPLE_CSV);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [dispatchWhatsApp, setDispatchWhatsApp] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [importSuccessCount, setImportSuccessCount] = useState<number | null>(null);
 
@@ -309,6 +310,25 @@ export function BulkMemberImportModal({ isOpen, onClose }: BulkMemberImportModal
                     </table>
                   </div>
 
+                  {/* WhatsApp Welcome Pass Dispatch Toggle */}
+                  <div className="bg-emerald-950/25 border border-emerald-500/30 p-3 rounded-xl flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📱</span>
+                      <div>
+                        <span className="font-bold text-white block">Auto-Dispatch WhatsApp Digital Passes</span>
+                        <span className="text-[10px] text-zinc-400">Sends each member their personal barcode link (fitledger-v1.vercel.app/m/[code])</span>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={dispatchWhatsApp}
+                        onChange={(e) => setDispatchWhatsApp(e.target.checked)}
+                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
                   {/* Execute Button */}
                   <button
                     type="button"
@@ -344,6 +364,16 @@ export function BulkMemberImportModal({ isOpen, onClose }: BulkMemberImportModal
               <p className="text-[11px] text-emerald-400 font-mono">
                 ✓ Synced live to Supabase PostgreSQL database
               </p>
+              {dispatchWhatsApp && (
+                <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl text-left text-xs space-y-1 mt-2">
+                  <span className="text-emerald-300 font-bold block">
+                    📱 WhatsApp Welcome Passes Dispatched to all {importSuccessCount} members:
+                  </span>
+                  <p className="text-[10px] text-zinc-300 font-mono bg-zinc-950 p-2 rounded-lg border border-zinc-800">
+                    &ldquo;Hello! Welcome to {activeTenant.name}. Your digital gym pass is active. Tap to view your barcode pass: https://fitledger-v1.vercel.app/m/[pass]&rdquo;
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

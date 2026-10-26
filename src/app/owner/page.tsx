@@ -1137,14 +1137,30 @@ export default function OwnerPage() {
                       )}
                     </td>
                     <td className="p-3 text-right">
-                      <Link
-                        href={`/m/${m.memberCode}`}
-                        target="_blank"
-                        className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 font-bold"
-                      >
-                        <span>View Pass</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cleanPhone = m.phoneNumber.replace(/\D/g, '').replace(/^0/, '');
+                            const passUrl = `https://fitledger-v1.vercel.app/m/${m.memberCode}`;
+                            const msg = `*${activeTenant.name} — Official Gym Pass* 🏋️‍♂️\n\nHello ${m.fullName},\nYour digital barcode gym pass is active!\n\nPass Code: #${m.memberCode}\nExpiry: ${m.subscriptionEndDate}\n\nTap to open your pass on your phone:\n${passUrl}\n\n_Show this at reception counter for 2-second check-in!_`;
+                            window.open(`https://api.whatsapp.com/send?phone=234${cleanPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+                          }}
+                          className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                          title="Send pass to member via WhatsApp"
+                        >
+                          <span>📱 WhatsApp Pass</span>
+                        </button>
+
+                        <Link
+                          href={`/m/${m.memberCode}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 font-bold"
+                        >
+                          <span>View</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
