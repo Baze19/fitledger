@@ -85,10 +85,21 @@ function renderPaystackSimulator(options: PaystackOptions) {
   const modal = document.createElement('div');
   modal.id = 'paystack-simulator-modal';
   modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in';
+  
+  // Append to body immediately so elements exist in DOM
+  document.body.appendChild(modal);
+
+  // Close on backdrop click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+      if (options.onClose) options.onClose();
+    }
+  });
 
   function updateView() {
     modal.innerHTML = `
-      <div class="bg-white text-zinc-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-zinc-200 font-sans">
+      <div class="bg-white text-zinc-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-zinc-200 font-sans" onclick="event.stopPropagation()">
         
         <!-- Paystack Header -->
         <div class="bg-[#0BA4DB] text-white p-4 flex items-center justify-between">
@@ -101,7 +112,7 @@ function renderPaystackSimulator(options: PaystackOptions) {
               <p class="text-lg font-black">₦${options.amountInNaira.toLocaleString()}</p>
             </div>
           </div>
-          <button id="pstk-close" class="text-white/80 hover:text-white text-2xl font-bold leading-none p-1 cursor-pointer">×</button>
+          <button id="pstk-close" type="button" class="text-white/80 hover:text-white text-2xl font-bold leading-none p-1 cursor-pointer">×</button>
         </div>
 
         <!-- Sandbox Banner -->
@@ -115,13 +126,13 @@ function renderPaystackSimulator(options: PaystackOptions) {
 
         <!-- Channels Tabs -->
         <div class="grid grid-cols-3 border-b border-zinc-200 text-xs font-bold text-center">
-          <button id="pstk-tab-card" class="py-3 transition cursor-pointer ${activeTab === 'card' ? 'border-b-2 border-[#0BA4DB] text-[#0BA4DB]' : 'text-zinc-500 hover:text-zinc-800'}">
+          <button id="pstk-tab-card" type="button" class="py-3 transition cursor-pointer ${activeTab === 'card' ? 'border-b-2 border-[#0BA4DB] text-[#0BA4DB]' : 'text-zinc-500 hover:text-zinc-800'}">
             💳 Card
           </button>
-          <button id="pstk-tab-transfer" class="py-3 transition cursor-pointer ${activeTab === 'transfer' ? 'border-b-2 border-[#0BA4DB] text-[#0BA4DB]' : 'text-zinc-500 hover:text-zinc-800'}">
+          <button id="pstk-tab-transfer" type="button" class="py-3 transition cursor-pointer ${activeTab === 'transfer' ? 'border-b-2 border-[#0BA4DB] text-[#0BA4DB]' : 'text-zinc-500 hover:text-zinc-800'}">
             🏦 Transfer
           </button>
-          <button id="pstk-tab-ussd" class="py-3 transition cursor-pointer ${activeTab === 'ussd' ? 'border-b-2 border-[#0BA4DB] text-[#0BA4DB]' : 'text-zinc-500 hover:text-zinc-800'}">
+          <button id="pstk-tab-ussd" type="button" class="py-3 transition cursor-pointer ${activeTab === 'ussd' ? 'border-b-2 border-[#0BA4DB] text-[#0BA4DB]' : 'text-zinc-500 hover:text-zinc-800'}">
             📱 USSD
           </button>
         </div>
@@ -171,7 +182,7 @@ function renderPaystackSimulator(options: PaystackOptions) {
           `}
 
           <!-- Pay Button -->
-          <button id="pstk-pay" class="w-full py-3.5 rounded-xl bg-[#0BA4DB] hover:bg-[#0993C4] text-white font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-[#0BA4DB]/30 cursor-pointer flex items-center justify-center gap-2">
+          <button id="pstk-pay" type="button" class="w-full py-3.5 rounded-xl bg-[#0BA4DB] hover:bg-[#0993C4] active:scale-[0.99] text-white font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-[#0BA4DB]/30 cursor-pointer flex items-center justify-center gap-2">
             <span>Authorize Payment — ₦${options.amountInNaira.toLocaleString()}</span>
           </button>
 
@@ -187,39 +198,55 @@ function renderPaystackSimulator(options: PaystackOptions) {
       </div>
     `;
 
-    document.getElementById('pstk-close')?.addEventListener('click', () => {
+    // Query directly on the modal container to guarantee element matching
+    modal.querySelector('#pstk-close')?.addEventListener('click', (e) => {
+      e.preventDefault();
       modal.remove();
       if (options.onClose) options.onClose();
     });
 
-    document.getElementById('pstk-tab-card')?.addEventListener('click', () => {
+    modal.querySelector('#pstk-tab-card')?.addEventListener('click', (e) => {
+      e.preventDefault();
       activeTab = 'card';
       updateView();
     });
 
-    document.getElementById('pstk-tab-transfer')?.addEventListener('click', () => {
+    modal.querySelector('#pstk-tab-transfer')?.addEventListener('click', (e) => {
+      e.preventDefault();
       activeTab = 'transfer';
       updateView();
     });
 
-    document.getElementById('pstk-tab-ussd')?.addEventListener('click', () => {
+    modal.querySelector('#pstk-tab-ussd')?.addEventListener('click', (e) => {
+      e.preventDefault();
       activeTab = 'ussd';
       updateView();
     });
 
-    document.getElementById('pstk-pay')?.addEventListener('click', () => {
-      const btn = document.getElementById('pstk-pay') as HTMLButtonElement;
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = `<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span> Verifying with Central Bank...`;
-      }
-      setTimeout(() => {
-        modal.remove();
-        options.onSuccess(ref);
-      }, 1200);
-    });
+    const payBtn = modal.querySelector('#pstk-pay') as HTMLButtonElement | null;
+    if (payBtn) {
+      payBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        payBtn.disabled = true;
+        payBtn.classList.add('opacity-80', 'cursor-not-allowed');
+        payBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          Authorizing with Central Bank...
+        `;
+        setTimeout(() => {
+          modal.remove();
+          try {
+            options.onSuccess(ref);
+          } catch (err) {
+            console.error('Paystack onSuccess callback error:', err);
+          }
+        }, 1000);
+      });
+    }
   }
 
   updateView();
-  document.body.appendChild(modal);
 }
