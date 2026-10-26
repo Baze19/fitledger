@@ -24,7 +24,11 @@ import {
   Send,
 } from 'lucide-react';
 
-export function FrontDeskView() {
+interface FrontDeskViewProps {
+  onOpenShiftClose?: () => void;
+}
+
+export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   const {
     activeTenant,
     activeScanResult,
@@ -244,7 +248,7 @@ export function FrontDeskView() {
         </div>
 
         {/* Shift Cash Tally */}
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="bg-zinc-950 border border-zinc-800 px-3.5 py-1.5 rounded-xl">
             <span className="text-zinc-500 block text-[10px] uppercase font-bold tracking-wider">CASH IN DRAWER</span>
             <span className="font-black text-amber-400 text-sm">₦{shiftSummary.cashExpected.toLocaleString()}</span>
@@ -257,6 +261,17 @@ export function FrontDeskView() {
             <span className="text-zinc-500 block text-[10px] uppercase font-bold tracking-wider">TRANSFERS</span>
             <span className="font-black text-blue-400 text-sm">₦{shiftSummary.transferExpected.toLocaleString()}</span>
           </div>
+
+          {onOpenShiftClose && (
+            <button
+              onClick={onOpenShiftClose}
+              type="button"
+              className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+              title="Close Day & Settle Drawer with Owner WhatsApp Report"
+            >
+              <span>🌙 Settle Drawer & End Day</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -1020,6 +1020,22 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     };
     setAuditLogs((prev) => [audit, ...prev]);
 
+    // Persist Daily Settlement to Supabase Cloud
+    if (supabase && isSupabaseConfigured) {
+      supabase
+        .from('pos_transactions')
+        .insert({
+          item_name: `Daily Close: ₦${cashCounted.toLocaleString()} counted (Variance: ₦${discrepancy.toLocaleString()})`,
+          quantity: 1,
+          amount_paid: cashCounted,
+          cashier_pin: activeStaff.pin || '2045',
+          payment_method: isBalanced ? 'Cash Balanced' : 'Cash Shortage Alert',
+        })
+        .then(({ error }) => {
+          if (error) console.warn('Supabase daily close sync fallback:', error.message);
+        });
+    }
+
     setShiftSummary((prev) => ({
       ...prev,
       cashCounted,

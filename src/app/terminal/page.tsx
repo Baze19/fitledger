@@ -176,18 +176,18 @@ export default function TerminalPage() {
             </div>
           </div>
 
-          {/* Shift Handover Button */}
+          {/* End-of-Day / Shift Handover Button */}
           <button
             onClick={() => setIsShiftCloseOpen(true)}
-            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition"
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-bold text-amber-300 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
           >
-            🔒 Shift Handover
+            <span>🌙 End Day & Settle</span>
           </button>
 
           {/* Lock Screen */}
           <button
             onClick={() => setIsLocked(true)}
-            className="p-2 bg-zinc-800 hover:bg-red-600 rounded-xl text-zinc-300 hover:text-white transition"
+            className="p-2 bg-zinc-800 hover:bg-red-600 rounded-xl text-zinc-300 hover:text-white transition cursor-pointer"
             title="Lock Terminal"
           >
             <Lock className="w-4 h-4" />
@@ -197,10 +197,14 @@ export default function TerminalPage() {
 
       {/* Main Front Desk App */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">
-        <FrontDeskView />
+        <FrontDeskView onOpenShiftClose={() => setIsShiftCloseOpen(true)} />
       </main>
 
-      <ShiftCloseModal isOpen={isShiftCloseOpen} onClose={() => setIsShiftCloseOpen(false)} />
+      <ShiftCloseModal
+        isOpen={isShiftCloseOpen}
+        onClose={() => setIsShiftCloseOpen(false)}
+        onLockTerminal={() => setIsLocked(true)}
+      />
     </div>
   );
 }
