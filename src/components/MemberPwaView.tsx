@@ -5,7 +5,7 @@ import { useGym } from '@/context/gym-context';
 import { QrCode, Calendar, Dumbbell, Users, CreditCard, ChevronRight, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 
 export function MemberPwaView() {
-  const { members, renewMember } = useGym();
+  const { members, renewMember, activeTenant } = useGym();
   // We showcase Abiodun Oludolapo (#124253) from the screenshots!
   const member = members.find((m) => m.memberCode === '124253') || members[0];
   const [showPtModal, setShowPtModal] = useState(false);
@@ -54,8 +54,8 @@ export function MemberPwaView() {
               <span className="block w-4 h-0.5 bg-white"></span>
             </div>
             <div>
-              <h2 className="font-extrabold text-sm tracking-tight leading-tight">FitLedger Gym Ikorodu</h2>
-              <p className="text-[10px] text-red-100">138 Ikorodu - Shagamu Road</p>
+              <h2 className="font-extrabold text-sm tracking-tight leading-tight">{activeTenant.name}</h2>
+              <p className="text-[10px] text-red-100">{activeTenant.location}</p>
             </div>
           </div>
           <span className="text-[10px] bg-red-800/80 px-2 py-0.5 rounded-full font-bold">VIP</span>

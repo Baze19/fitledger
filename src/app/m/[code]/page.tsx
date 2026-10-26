@@ -10,7 +10,7 @@ import Link from 'next/link';
 function MemberPassContent() {
   const params = useParams();
   const code = (params?.code as string) || '124253';
-  const { members, renewMember } = useGym();
+  const { members, renewMember, activeTenant } = useGym();
 
   const member = members.find((m) => m.memberCode === code) || members[0];
   const [showPtModal, setShowPtModal] = useState(false);
@@ -22,7 +22,7 @@ function MemberPassContent() {
       amountInNaira: 30000,
       fullName: member.fullName,
       planName: 'VIP All-Access Monthly Pass Renewal',
-      gymName: 'FitZone Elite Fitness',
+      gymName: activeTenant.name,
       onSuccess: (ref) => {
         renewMember(member.id, 'plan_monthly_vip', 'paystack_online');
         alert(`✓ Payment Confirmed via Paystack!\n\nRef: ${ref}\nYour VIP Membership has been extended by 30 days!`);
@@ -63,8 +63,8 @@ function MemberPassContent() {
                 <ArrowLeft className="w-5 h-5 text-white" />
               </Link>
               <div>
-                <h1 className="font-extrabold text-sm tracking-tight leading-tight">FitLedger Gym Ikorodu</h1>
-                <p className="text-[10px] text-red-100">138 Ikorodu - Shagamu Road</p>
+                <h1 className="font-extrabold text-sm tracking-tight leading-tight">{activeTenant.name}</h1>
+                <p className="text-[10px] text-red-100">{activeTenant.location}</p>
               </div>
             </div>
             <span className="text-[10px] bg-red-800/80 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">

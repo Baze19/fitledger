@@ -44,9 +44,9 @@ export async function POST(request: Request) {
         role: 'owner',
         targetUrl: '/owner',
         user: {
-          fullName: 'Chief Tunde Adeleke',
-          gymName: 'FitLedger Gym Ikorodu',
-          tenantId: 'tenant_ikorodu',
+          fullName: 'Fitflex Owner / Manager',
+          gymName: 'Fitflex Fitness Irawo',
+          tenantId: 'tenant_fitflex',
           role: 'GYM_OWNER',
         },
         token: `jwt_owner_${Date.now()}`,

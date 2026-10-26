@@ -2,11 +2,11 @@ import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, Own
 
 export const INITIAL_TENANTS: GymTenant[] = [
   {
-    id: 'tenant_ikorodu',
-    name: 'FitLedger Gym Ikorodu',
-    slug: 'ikorodu',
-    location: '138 Ikorodu - Shagamu Road, Ikorodu, Lagos',
-    ownerName: 'Chief Tunde Adeleke',
+    id: 'tenant_fitflex',
+    name: 'Fitflex Fitness Irawo',
+    slug: 'fitflex-irawo',
+    location: 'Irawo Bus Stop, Owode Onirin, Ikorodu Road, Lagos',
+    ownerName: 'Fitflex Management',
     ownerPhone: '0802 345 6789',
     planTier: 'Growth',
     monthlyFee: 45000,
