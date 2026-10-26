@@ -42,6 +42,8 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     members,
     retailItems,
     sellRetailItem,
+    hasFeature,
+    openUpgradeModal,
   } = useGym();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -676,6 +678,10 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                       <button
                         type="button"
                         onClick={() => {
+                          if (!hasFeature('whatsappReceipts')) {
+                            openUpgradeModal('whatsappReceipts');
+                            return;
+                          }
                           const text = `*${activeTenant.name} - Official E-Receipt* 🧾\n\nRef: #${lastReceipt.txId}\nItem: ${lastReceipt.itemName}\nTotal: ₦${lastReceipt.amount.toLocaleString()}\nPayment: ${lastReceipt.paymentMethod.replace('_', ' ').toUpperCase()}\nCashier: ${lastReceipt.staffName} (PIN ${lastReceipt.staffPin})\nTime: ${lastReceipt.timestamp}\n\n_Thank you for training with us!_`;
                           window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
                         }}
@@ -683,6 +689,11 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                       >
                         <Send className="w-3.5 h-3.5" />
                         <span>Send WhatsApp Receipt</span>
+                        {!hasFeature('whatsappReceipts') && (
+                          <span className="bg-black/35 text-amber-300 border border-amber-300/40 px-1 py-0.2 rounded text-[8px] font-black uppercase">
+                            🔒 Growth
+                          </span>
+                        )}
                       </button>
 
                       <button

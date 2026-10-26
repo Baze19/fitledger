@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod } from '@/types';
 import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { PlanTier, FeatureKey, canAccessFeature, getMaxMembersAllowed, PLAN_TIERS } from '@/lib/entitlements';
+import { FeatureGateModal } from '@/components/FeatureGateModal';
 
 interface GymContextType {
   tenants: GymTenant[];
@@ -71,6 +73,14 @@ interface GymContextType {
   restockItem: (itemId: string, unitsAdded: number, costPerUnit: number, supplier: string) => void;
   reconcileStockCount: (itemId: string, physicalCount: number, notes?: string) => { discrepancy: number; isBalanced: boolean };
   isCloudConnected: boolean;
+
+  // Plan Entitlements & Feature Gating
+  hasFeature: (featureKey: FeatureKey) => boolean;
+  upgradeTenantTier: (tenantId: string, newTier: PlanTier) => Promise<void>;
+  isUpgradeModalOpen: boolean;
+  activeGatedFeature: FeatureKey | null;
+  openUpgradeModal: (featureKey: FeatureKey) => void;
+  closeUpgradeModal: () => void;
 }
 
 const GymContext = createContext<GymContextType | undefined>(undefined);
@@ -105,6 +115,60 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(isSupabaseConfigured);
+
+  // Plan Entitlement Gating & In-App Upgrade State
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState<boolean>(false);
+  const [activeGatedFeature, setActiveGatedFeature] = useState<FeatureKey | null>(null);
+
+  const openUpgradeModal = (featureKey: FeatureKey) => {
+    setActiveGatedFeature(featureKey);
+    setIsUpgradeModalOpen(true);
+  };
+
+  const closeUpgradeModal = () => {
+    setIsUpgradeModalOpen(false);
+    setActiveGatedFeature(null);
+  };
+
+  const hasFeature = (featureKey: FeatureKey): boolean => {
+    return canAccessFeature(activeTenant?.planTier || 'Starter', featureKey);
+  };
+
+  const upgradeTenantTier = async (tenantId: string, newTier: PlanTier) => {
+    const targetFee = PLAN_TIERS[newTier]?.monthlyFee || 45000;
+    setActiveTenant((prev) => ({
+      ...prev,
+      planTier: newTier,
+      monthlyFee: targetFee,
+    }));
+    setTenants((prev) =>
+      prev.map((t) => (t.id === tenantId ? { ...t, planTier: newTier, monthlyFee: targetFee } : t))
+    );
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeTenant.ownerName || 'Gym Owner',
+      action: 'Plan Tier Upgraded',
+      details: `${activeTenant.name} upgraded subscription plan to ${newTier.toUpperCase()} (₦${targetFee.toLocaleString()}/mo). All tier features unlocked immediately.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    if (supabase && isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('gyms')
+          .update({
+            plan_tier: newTier,
+            monthly_price: targetFee,
+          })
+          .eq('slug', activeTenant.slug);
+      } catch (e) {
+        console.warn('Supabase tier update fallback:', e);
+      }
+    }
+  };
 
   // Sync initial cloud data from Supabase if configured
   useEffect(() => {
@@ -1147,9 +1211,20 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         restockItem,
         reconcileStockCount,
         isCloudConnected,
+        hasFeature,
+        upgradeTenantTier,
+        isUpgradeModalOpen,
+        activeGatedFeature,
+        openUpgradeModal,
+        closeUpgradeModal,
       }}
     >
       {children}
+      <FeatureGateModal
+        isOpen={isUpgradeModalOpen}
+        featureKey={activeGatedFeature}
+        onClose={closeUpgradeModal}
+      />
     </GymContext.Provider>
   );
 }

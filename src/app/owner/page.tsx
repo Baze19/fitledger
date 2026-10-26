@@ -74,6 +74,8 @@ export default function OwnerPage() {
     addRetailItem,
     restockItem,
     reconcileStockCount,
+    hasFeature,
+    openUpgradeModal,
   } = useGym();
 
   const [activeTab, setActiveTab] = useState<'finance' | 'inventory' | 'trainers' | 'churn' | 'staff' | 'members' | 'whatsapp'>('finance');
@@ -244,11 +246,23 @@ export default function OwnerPage() {
               🏢
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-black tracking-tight text-white">{activeTenant.name}</h1>
                 <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                   Owner Executive Suite
                 </span>
+                <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  ⚡ {activeTenant.planTier || 'Starter'} Plan
+                </span>
+                {activeTenant.planTier !== 'Enterprise' && (
+                  <button
+                    onClick={() => openUpgradeModal(activeTenant.planTier === 'Starter' ? 'ptTrainerScheduling' : 'turnstileGateApi')}
+                    type="button"
+                    className="text-[10px] bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-extrabold px-2.5 py-0.5 rounded-full shadow-md shadow-red-600/20 cursor-pointer flex items-center gap-1 transition active:scale-95"
+                  >
+                    <span>🚀 Upgrade</span>
+                  </button>
+                )}
               </div>
               <p className="text-xs text-zinc-400">Owner: {activeTenant.ownerName} • {activeTenant.location}</p>
             </div>
@@ -295,14 +309,26 @@ export default function OwnerPage() {
           1. Financials & Anti-Fake Alert
         </button>
         <button
-          onClick={() => setActiveTab('trainers')}
+          onClick={() => {
+            if (!hasFeature('ptTrainerScheduling')) {
+              openUpgradeModal('ptTrainerScheduling');
+            } else {
+              setActiveTab('trainers');
+            }
+          }}
           className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'trainers' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
           }`}
         >
           <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
-          <span>2. PT Commissions & Splits</span>
-          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{trainerCommissions.length}</span>
+          <span>2. PT Commissions</span>
+          {!hasFeature('ptTrainerScheduling') ? (
+            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
+              🔒 Growth
+            </span>
+          ) : (
+            <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{trainerCommissions.length}</span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('inventory')}
@@ -356,6 +382,21 @@ export default function OwnerPage() {
         >
           <Bot className="w-3.5 h-3.5 text-purple-400" />
           <span>7. WhatsApp AI Auditor</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!hasFeature('turnstileGateApi')) {
+              openUpgradeModal('turnstileGateApi');
+            }
+          }}
+          className="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-white border border-dashed border-purple-500/40 hover:border-purple-500/80 bg-purple-950/20"
+        >
+          <Lock className="w-3.5 h-3.5 text-purple-400" />
+          <span>8. Turnstile Barriers</span>
+          <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
+            Enterprise
+          </span>
         </button>
       </div>
 
