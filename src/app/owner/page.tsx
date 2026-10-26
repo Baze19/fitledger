@@ -38,8 +38,10 @@ import {
   Receipt,
   Truck,
   SlidersHorizontal,
+  FileSpreadsheet,
 } from 'lucide-react';
 import Link from 'next/link';
+import { BulkMemberImportModal } from '@/components/BulkMemberImportModal';
 
 interface ChatMessage {
   id: string;
@@ -95,6 +97,9 @@ export default function OwnerPage() {
   const [newStaffRole, setNewStaffRole] = useState<'receptionist' | 'trainer' | 'manager'>('receptionist');
   const [newStaffPin, setNewStaffPin] = useState('5829');
   const [staffCreatedSuccess, setStaffCreatedSuccess] = useState<string | null>(null);
+
+  // Bulk Member Migration Modal State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Manual Transfer Override PIN state
   const [overrideTransferId, setOverrideTransferId] = useState<string | null>(null);
@@ -1083,7 +1088,19 @@ export default function OwnerPage() {
               <h3 className="font-extrabold text-sm text-white">Member Master Directory</h3>
               <p className="text-xs text-zinc-400">Digital passes, barcodes, and WhatsApp numbers</p>
             </div>
-            <span className="text-xs text-zinc-400 font-mono">Total Members: {members.length}</span>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(true)}
+                className="py-2 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-600/30 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>📥 1-Click Excel / Notebook Migration</span>
+              </button>
+              <span className="text-xs text-zinc-400 font-mono bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800">
+                Total: {members.length}
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -1927,6 +1944,12 @@ export default function OwnerPage() {
           </div>
         </div>
       )}
+
+      {/* 1-Click Bulk Member Importer */}
+      <BulkMemberImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
 
     </div>
   );

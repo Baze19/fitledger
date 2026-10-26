@@ -54,6 +54,7 @@ interface GymContextType {
   setScanResultIdle: () => void;
   checkInMember: (query: string, method?: 'qr_scan' | 'phone_lookup') => { success: boolean; member?: Member; reason?: string };
   registerMember: (data: { fullName: string; phoneNumber: string; planId: string; paymentMethod: Transaction['paymentMethod'] }) => Member;
+  bulkImportMembers: (items: { fullName: string; phoneNumber: string; status: 'active' | 'expired'; currentPlanId: string; subscriptionEndDate: string; remainingPtSessions: number }[]) => { count: number; importedCodes: string[] };
   renewMember: (memberId: string, planId: string, paymentMethod: Transaction['paymentMethod']) => void;
   overrideExpiredEntry: (memberId: string, reason: string) => void;
   closeShift: (cashCounted: number) => { discrepancy: number; isBalanced: boolean };
@@ -945,6 +946,75 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     return newMember;
   };
 
+  // Bulk Import Legacy Members (1-Click Excel / Notebook Migration)
+  const bulkImportMembers = (items: { fullName: string; phoneNumber: string; status: 'active' | 'expired'; currentPlanId: string; subscriptionEndDate: string; remainingPtSessions: number }[]) => {
+    const startCode = 108740 + members.length + 1;
+    const importedCodes: string[] = [];
+
+    const newMembers: Member[] = items.map((item, idx) => {
+      const code = (startCode + idx).toString();
+      importedCodes.push(code);
+      return {
+        id: `mem_import_${Date.now()}_${idx}`,
+        tenantId: activeTenant.id,
+        fullName: item.fullName,
+        phoneNumber: item.phoneNumber,
+        memberCode: code,
+        email: `${item.fullName.toLowerCase().replace(/[^a-z]/g, '')}@gymmember.ng`,
+        photoUrl: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250&auto=format&fit=crop&q=80`,
+        status: item.status,
+        joinedDate: '2026-10-26',
+        currentPlanId: item.currentPlanId,
+        subscriptionStartDate: '2026-10-26',
+        subscriptionEndDate: item.subscriptionEndDate,
+        remainingPtSessions: item.remainingPtSessions,
+        totalVisitsThisMonth: 1,
+        visitDates: ['2026-10-26'],
+        ptSessionDates: [],
+      };
+    });
+
+    setMembers((prev) => [...newMembers, ...prev]);
+
+    setActiveTenant((prev) => ({
+      ...prev,
+      membersCount: prev.membersCount + newMembers.length,
+    }));
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeTenant.ownerName || 'Gym Owner',
+      action: 'Bulk Member Migration',
+      details: `Bulk migrated ${newMembers.length} legacy members into ${activeTenant.name}. Barcode passes #${importedCodes[0]} - #${importedCodes[importedCodes.length - 1]} generated.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    // Background cloud batch persistence
+    if (supabase && isSupabaseConfigured) {
+      const cloudPayload = newMembers.map((m) => ({
+        full_name: m.fullName,
+        phone: m.phoneNumber,
+        pass_code: m.memberCode,
+        status: m.status === 'active' ? 'Active' : 'Expired',
+        expiry_date: m.subscriptionEndDate,
+        avatar_url: m.photoUrl,
+        plan_type: 'Monthly Access Pass',
+      }));
+
+      supabase
+        .from('members')
+        .insert(cloudPayload)
+        .then(({ error }) => {
+          if (error) console.warn('Supabase bulk member import fallback:', error.message);
+        });
+    }
+
+    return { count: newMembers.length, importedCodes };
+  };
+
   // Renew Member
   const renewMember = (memberId: string, planId: string, paymentMethod: Transaction['paymentMethod']) => {
     const selectedPlan = plans.find((p) => p.id === planId) || plans[1];
@@ -1193,6 +1263,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         setScanResultIdle,
         checkInMember,
         registerMember,
+        bulkImportMembers,
         renewMember,
         overrideExpiredEntry,
         closeShift,
