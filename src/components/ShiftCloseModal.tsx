@@ -212,7 +212,7 @@ export function ShiftCloseModal({ isOpen, onClose, onLockTerminal }: ShiftCloseM
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
-                  🌙 Single Receptionist Close (8:30 PM)
+                  🌙 End-of-Day Close (Single Receptionist)
                 </button>
                 <button
                   type="button"
