@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitLedger OS — Business Requirements Document & Technical Architecture</title>
+  <style>
+    :root {
+      --primary: #0F172A;
+      --primary-light: #1E293B;
+      --accent-green: #10B981;
+      --accent-green-bg: #ECFDF5;
+      --accent-red: #EF4444;
+      --accent-red-bg: #FEF2F2;
+      --accent-blue: #3B82F6;
+      --accent-blue-bg: #EFF6FF;
+      --accent-purple: #8B5CF6;
+      --text-main: #1E293B;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --bg-page: #F8FAFC;
+      --bg-card: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      line-height: 1.6;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Print Controls Banner */
+    .print-banner {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      background: #0F172A;
+      color: #FFFFFF;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .print-banner .meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .badge {
+      background: #10B981;
+      color: #064E3B;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge.red {
+      background: #EF4444;
+      color: #FFFFFF;
+    }
+    .badge.blue {
+      background: #3B82F6;
+      color: #FFFFFF;
+    }
+    .badge.purple {
+      background: #8B5CF6;
+      color: #FFFFFF;
+    }
+    .print-btn {
+      background: #10B981;
+      color: #FFFFFF;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+      transition: all 0.2s;
+    }
+    .print-btn:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    /* Document Container */
+    .doc-container {
+      max-width: 960px;
+      margin: 32px auto;
+      background: var(--bg-card);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .doc-content {
+      padding: 48px 56px;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4 {
+      color: var(--primary);
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    h1 { font-size: 26px; }
+    h2 {
+      font-size: 19px;
+      margin-top: 36px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #F1F5F9;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h3 { font-size: 15px; margin-top: 20px; margin-bottom: 10px; }
+    p { margin-bottom: 14px; color: #334155; }
+    strong { color: #0F172A; }
+
+    /* Cover Header */
+    .cover-header {
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+      color: #FFFFFF;
+      padding: 40px 56px;
+      border-bottom: 4px solid var(--accent-green);
+    }
+    .cover-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: var(--accent-green);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      font-weight: 900;
+      font-size: 18px;
+    }
+    .cover-title {
+      font-size: 28px;
+      color: #FFFFFF;
+      margin-bottom: 8px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .cover-subtitle {
+      font-size: 15px;
+      color: #94A3B8;
+      max-width: 680px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .cover-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+    }
+    .meta-item .label {
+      color: #94A3B8;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .meta-item .val {
+      font-weight: 600;
+      color: #F8FAFC;
+    }
+
+    /* Executive Highlights Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .kpi-card {
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+      border-left: 4px solid var(--accent-green);
+    }
+    .kpi-card.red { border-left-color: var(--accent-red); }
+    .kpi-card.blue { border-left-color: var(--accent-blue); }
+    .kpi-card .kpi-num {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .kpi-card .kpi-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .kpi-card .kpi-desc {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* Callouts */
+    .callout {
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 20px 0;
+      font-size: 13px;
+    }
+    .callout.green {
+      background: var(--accent-green-bg);
+      border-color: #A7F3D0;
+      color: #065F46;
+    }
+    .callout.red {
+      background: var(--accent-red-bg);
+      border-color: #FECACA;
+      color: #991B1B;
+    }
+    .callout.blue {
+      background: var(--accent-blue-bg);
+      border-color: #BFDBFE;
+      color: #1E40AF;
+    }
+    .callout-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: #F1F5F9;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: #F8FAFC;
+    }
+
+    /* Diagram Containers */
+    .diagram-box {
+      background: #0F172A;
+      color: #FFFFFF;
+      border-radius: 10px;
+      padding: 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .diagram-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent-green);
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .diagram-subtitle {
+      font-size: 11px;
+      color: #94A3B8;
+      font-weight: normal;
+      text-transform: none;
+    }
+
+    /* Architecture Grid */
+    .arch-cols {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      gap: 16px;
+      position: relative;
+    }
+    .arch-col {
+      background: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .arch-col-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #334155;
+    }
+    .arch-card {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      border-left: 3px solid var(--accent-green);
+    }
+    .arch-card.blue { border-left-color: var(--accent-blue); }
+    .arch-card.red { border-left-color: var(--accent-red); }
+    .arch-card.purple { border-left-color: var(--accent-purple); }
+    .arch-card-title {
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 2px;
+    }
+    .arch-card-desc {
+      font-size: 11px;
+      color: #94A3B8;
+    }
+
+    /* Sequence Steps */
+    .seq-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .seq-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .seq-num {
+      width: 28px;
+      height: 28px;
+      background: var(--accent-green);
+      color: #064E3B;
+      font-weight: 800;
+      font-size: 13px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .seq-num.blue { background: var(--accent-blue); color: #FFFFFF; }
+    .seq-num.red { background: var(--accent-red); color: #FFFFFF; }
+    .seq-content h4 {
+      color: #F8FAFC;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    .seq-content p {
+      font-size: 12px;
+      color: #94A3B8;
+      margin: 0;
+    }
+
+    /* ERD Grid */
+    .erd-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .erd-table {
+      background: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 11px;
+    }
+    .erd-header {
+      background: #0F172A;
+      padding: 8px 12px;
+      font-weight: 700;
+      color: var(--accent-green);
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+    }
+    .erd-body {
+      padding: 8px 12px;
+    }
+    .erd-field {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      color: #E2E8F0;
+      border-bottom: 1px dashed rgba(255,255,255,0.08);
+    }
+    .erd-field:last-child { border-bottom: none; }
+    .erd-type {
+      color: #94A3B8;
+      font-family: monospace;
+      font-size: 10px;
+    }
+    .erd-key {
+      color: #F59E0B;
+      font-weight: bold;
+      font-size: 9px;
+      margin-right: 4px;
+    }
+
+    /* Signoff Block */
+    .signoff-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 2px solid var(--border);
+    }
+    .signoff-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      background: #F8FAFC;
+    }
+    .signoff-role {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    .signoff-line {
+      border-bottom: 1px solid #94A3B8;
+      margin-bottom: 8px;
+    }
+    .signoff-name {
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .signoff-title {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: #FFFFFF !important;
+        font-size: 11.5pt;
+      }
+      .print-banner {
+        display: none !important;
+      }
+      .doc-container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
+      .doc-content {
+        padding: 0 !important;
+      }
+      .cover-header {
+        padding: 30px 40px !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .diagram-box {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .kpi-card, .callout, th, .badge {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+      @page {
+        size: A4;
+        margin: 15mm 15mm 15mm 15mm;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Print Banner -->
+  <div class="print-banner">
+    <div class="meta">
+      <strong>FitLedger Technologies Ltd.</strong>
+      <span>•</span>
+      <span>Document: BRD & Architecture Specification v1.0.0</span>
+      <span>•</span>
+      <span class="badge">Pilot: Fitflex Fitness Irawo</span>
+    </div>
+    <button class="print-btn" onclick="window.print()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+        <rect x="6" y="14" width="12" height="8"></rect>
+      </svg>
+      🖨️ Print / Save as PDF
+    </button>
+  </div>
+
+  <div class="doc-container">
+    <!-- Cover Header -->
+    <div class="cover-header">
+      <div class="cover-top">
+        <div class="brand-logo">
+          <div class="brand-icon">FL</div>
+          <span>FitLedger OS</span>
+        </div>
+        <span class="badge">CONFIDENTIAL & PROPRIETARY</span>
+      </div>
+      <h1 class="cover-title">End-to-End Business Requirements Document (BRD) & Technical Architecture Specification</h1>
+      <p class="cover-subtitle">A Comprehensive Operating System, Zero-Trust Anti-Theft Financial Engine, and Offline Resilience Architecture Engineered for Commercial Fitness Centers in Nigeria.</p>
+      
+      <div class="cover-meta-grid">
+        <div class="meta-item">
+          <div class="label">Platform Version</div>
+          <div class="val">v1.0.0 (Production Pilot)</div>
+        </div>
+        <div class="meta-item">
+          <div class="label">Primary Target Pilot</div>
+          <div class="val">Fitflex Fitness Irawo</div>
+        </div>
+        <div class="meta-item">
+          <div class="label">Target Territory</div>
+          <div class="val">Owode Onirin, Ikorodu, Lagos</div>
+        </div>
+        <div class="meta-item">
+          <div class="label">Classification</div>
+          <div class="val">Enterprise Whitepaper</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Document Content -->
+    <div class="doc-content">
+
+      <!-- Section 1 -->
+      <h2>1. Executive Summary & The Nigerian Gym Operational Crisis</h2>
+      <p>Commercial gym centers across emerging African markets—especially Lagos metropolitan corridors (Ikorodu Road, Owode Onirin, Surulere, Ikeja, Yaba, Lekki)—operate in a high-friction environment plagued by four systemic vulnerabilities:</p>
+      
+      <div class="kpi-grid">
+        <div class="kpi-card red">
+          <div class="kpi-num">₦280k/mo</div>
+          <div class="kpi-label">Average Unrecorded Leakage</div>
+          <div class="kpi-desc">Front-desk cashiers pocket ₦2,000–₦3,500 walk-in day passes and renewal fees when owners are absent.</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-num">6.2x ROI</div>
+          <div class="kpi-label">First-Month Net Value</div>
+          <div class="kpi-desc">Plugging unrecorded passes on an ₦45k/mo Growth Plan yields over ₦280k in immediately recovered revenue.</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-num">0.0s Lag</div>
+          <div class="kpi-label">NEPA Power-Switch Gap</div>
+          <div class="kpi-desc">Zero terminal freeze during the 60-second generator cutover via IndexedDB offline queuing.</div>
+        </div>
+      </div>
+
+      <div class="callout red">
+        <div class="callout-title">
+          <span>⚠️</span> The Reality of Single-Receptionist Neighborhood Gyms
+        </div>
+        In neighborhood clubs such as <strong>Fitflex Fitness at Irawo (Owode Onirin)</strong>, a single front-desk staff member operates the counter all day. There is no colleague to execute two-man shift handovers. Without digital verification, unannounced walk-ins paying cash leave no paper trail. <strong>FitLedger OS solves this with two tamper-proof pillars:</strong> (1) Instant automated WhatsApp digital entry passes sent directly to the customer's phone, and (2) A mandatory 8:30 PM End-of-Day Blind Drawer Cash Reconciliation report dispatched automatically to the Gym Owner's private WhatsApp.
+      </div>
+
+      <!-- Section 2 -->
+      <div class="page-break"></div>
+      <h2>2. High-Level System Architecture</h2>
+      <p>FitLedger OS utilizes a distributed, offline-resilient edge architecture with instantaneous cloud synchronization across four primary tiers:</p>
+
+      <div class="diagram-box">
+        <div class="diagram-title">
+          <span>FIGURE 1: DISTRIBUTED ANTI-THEFT & HIGH-AVAILABILITY CLOUD ARCHITECTURE</span>
+          <span class="diagram-subtitle">Next.js 16 • Supabase Cloud PostgreSQL • Paystack API</span>
+        </div>
+
+        <div class="arch-cols">
+          <!-- Col 1: Edge Clients -->
+          <div class="arch-col">
+            <div class="arch-col-title">1. Edge Client Layer</div>
+            
+            <div class="arch-card">
+              <div class="arch-card-title">Front-Desk Terminal</div>
+              <div class="arch-card-desc"><code>/terminal</code> • Fast scan, retail POS, 1-click renewal, shift closing</div>
+            </div>
+
+            <div class="arch-card blue">
+              <div class="arch-card-title">Owner Executive Suite</div>
+              <div class="arch-card-desc"><code>/owner</code> • Live revenue, audits, staff PINs, bulk Excel import</div>
+            </div>
+
+            <div class="arch-card purple">
+              <div class="arch-card-title">Member Barcode PWA</div>
+              <div class="arch-card-desc"><code>/m/:code</code> • Offline digital pass, Paystack self-renewal, QR check-in</div>
+            </div>
+
+            <div class="arch-card red">
+              <div class="arch-card-title">SuperAdmin HQ</div>
+              <div class="arch-card-desc"><code>/admin</code> • Multi-tenant gym onboarding, MRR metrics, impersonation</div>
+            </div>
+          </div>
+
+          <!-- Col 2: Core Engine -->
+          <div class="arch-col">
+            <div class="arch-col-title">2. FitLedger Core Engine</div>
+            
+            <div class="arch-card">
+              <div class="arch-card-title">GymContext Engine</div>
+              <div class="arch-card-desc">Single source of truth, reactive state, multi-tenant scoping</div>
+            </div>
+
+            <div class="arch-card blue">
+              <div class="arch-card-title">Entitlements Gating</div>
+              <div class="arch-card-desc">Starter, Growth, Enterprise feature access rules and upgrade modals</div>
+            </div>
+
+            <div class="arch-card red">
+              <div class="arch-card-title">NEPA Offline Outbox</div>
+              <div class="arch-card-desc">IndexedDB / LocalStorage queue; auto-flushes upon internet reconnection</div>
+            </div>
+
+            <div class="arch-card purple">
+              <div class="arch-card-title">Audio Synthesizer</div>
+              <div class="arch-card-desc">Web Audio API: 587Hz-880Hz access chime; 220Hz denial buzzer</div>
+            </div>
+          </div>
+
+          <!-- Col 3: Cloud Services -->
+          <div class="arch-col">
+            <div class="arch-col-title">3. External Cloud & APIs</div>
+            
+            <div class="arch-card">
+              <div class="arch-card-title">Supabase Cloud PostgreSQL</div>
+              <div class="arch-card-desc">Multi-tenant RLS, audit logs, real-time sync (Project: dnmtjcrdtqfhwbfoukvz)</div>
+            </div>
+
+            <div class="arch-card blue">
+              <div class="arch-card-title">Paystack Gateway</div>
+              <div class="arch-card-desc">Direct card tokenize, virtual accounts, USSD (*737#), automated split</div>
+            </div>
+
+            <div class="arch-card purple">
+              <div class="arch-card-title">WhatsApp & Termii SMS</div>
+              <div class="arch-card-desc">Automated welcome passes, daily 8:30 PM closing digests, ₦2.50 SMS</div>
+            </div>
+
+            <div class="arch-card red">
+              <div class="arch-card-title">Hardware Turnstiles</div>
+              <div class="arch-card-desc">Relay controllers, magnetic door strikes, tripod turnstile barriers</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3 -->
+      <h2>3. End-to-End Functional Requirements Matrix</h2>
+      
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 15%;">Module</th>
+            <th style="width: 25%;">Functional Requirement</th>
+            <th style="width: 40%;">Business Logic & Anti-Theft Protection</th>
+            <th style="width: 20%;">Plan Tier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Terminal</strong></td>
+            <td>Sub-2s Member Check-In</td>
+            <td>Instant camera QR barcode scan or phone search. Audio synthesized feedback (Chime vs Buzz). Logs attendance record with timestamp and cashier ID.</td>
+            <td><span class="badge">Starter</span></td>
+          </tr>
+          <tr>
+            <td><strong>Terminal</strong></td>
+            <td>45s Rapid Member Onboarding</td>
+            <td>Captures Full Name, Phone, Plan, and Payment Channel. Generates 6-digit barcode (<code>#108740</code>...) and pushes pass link to member's WhatsApp.</td>
+            <td><span class="badge">Starter</span></td>
+          </tr>
+          <tr>
+            <td><strong>Terminal</strong></td>
+            <td>Pro-Shop Retail POS</td>
+            <td>Quick touch sale for bottled water, energy drinks, shakes. Auto-decrements inventory; flags low stock. Cash, Transfer, and POS card payment tags.</td>
+            <td><span class="badge">Starter</span></td>
+          </tr>
+          <tr>
+            <td><strong>Terminal</strong></td>
+            <td>1-Click Paystack Direct Renewal</td>
+            <td>Direct inline modal processing Nigerian bank cards, Wema/Titan bank transfers, and USSD. Extends member sub by 30 days upon webhook confirmation.</td>
+            <td><span class="badge">Starter</span></td>
+          </tr>
+          <tr>
+            <td><strong>Terminal</strong></td>
+            <td>End-of-Day Blind Drawer Close</td>
+            <td>Staff enters physical cash count blindly. System compares with expected ledger. Flags Exact (₦0), Shortage Alert, or Surplus. Dispatches WhatsApp report.</td>
+            <td><span class="badge blue">Growth</span></td>
+          </tr>
+          <tr>
+            <td><strong>Owner Suite</strong></td>
+            <td>Real-Time Financial Ledger</td>
+            <td>Consolidated breakdown of Gross Revenue, Bank Transfers, POS Card Slips, and Cash in Drawer. Live head-count vs transaction ratio.</td>
+            <td><span class="badge">Starter</span></td>
+          </tr>
+          <tr>
+            <td><strong>Owner Suite</strong></td>
+            <td>1-Click Bulk Member Importer</td>
+            <td>Three ingest modes: Raw Excel paste, CSV/XLSX file upload, and Notebook Register OCR digitization. Auto-generates passes and bulk WhatsApp welcome.</td>
+            <td><span class="badge">Starter</span></td>
+          </tr>
+          <tr>
+            <td><strong>Owner Suite</strong></td>
+            <td>PT Trainer Commission Engine</td>
+            <td>Tracks personal trainer sessions and auto-calculates 70/30 or 60/40 splits between gym and freelance trainers. Prevents private cash deals.</td>
+            <td><span class="badge blue">Growth</span></td>
+          </tr>
+          <tr>
+            <td><strong>Enterprise</strong></td>
+            <td>Multi-Branch Roaming VIP</td>
+            <td>Allows members of a gym chain (e.g. Irawo + Surulere) to scan entry at any branch. Calculates cross-branch attendance fees and internal revenue splits.</td>
+            <td><span class="badge purple">Enterprise</span></td>
+          </tr>
+          <tr>
+            <td><strong>Enterprise</strong></td>
+            <td>Hardware Turnstile Integration</td>
+            <td>Hardware relay controller triggering magnetic door locks and tripod turnstiles upon valid barcode scan. Rejects expired members physically.</td>
+            <td><span class="badge purple">Enterprise</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Section 4 -->
+      <div class="page-break"></div>
+      <h2>4. Zero-Trust Anti-Theft Verification Flow</h2>
+      <p>How FitLedger eliminates cash leakage for walk-ins and subscriptions without requiring expensive physical security guards:</p>
+
+      <div class="diagram-box">
+        <div class="diagram-title">
+          <span>FIGURE 2: ZERO-TRUST CASH VERIFICATION & AUDIT FLOW</span>
+          <span class="diagram-subtitle">From Walk-In Payment to Owner 8:30 PM WhatsApp Settlement</span>
+        </div>
+
+        <div class="seq-steps">
+          <div class="seq-step">
+            <div class="seq-num">1</div>
+            <div class="seq-content">
+              <h4>Walk-In Day Pass Request (₦3,000)</h4>
+              <p>A guest arrives at Fitflex Irawo. Cashier selects "Day Pass" on the terminal and inputs the guest's WhatsApp phone number.</p>
+            </div>
+          </div>
+
+          <div class="seq-step">
+            <div class="seq-num blue">2</div>
+            <div class="seq-content">
+              <h4>Direct Digital Payment or Cash Ingestion</h4>
+              <p>Guest pays via Paystack (Card/USSD) or hands ₦3,000 cash to cashier. Cashier logs transaction under their unique 4-digit Staff PIN.</p>
+            </div>
+          </div>
+
+          <div class="seq-step">
+            <div class="seq-num">3</div>
+            <div class="seq-content">
+              <h4>Instant Customer-Held Digital Pass</h4>
+              <p>Customer immediately receives a digital entry badge on their phone (<code>fitledger-v1.vercel.app/m/108745</code>). If floor trainers inspect members, the customer holds proof of payment.</p>
+            </div>
+          </div>
+
+          <div class="seq-step">
+            <div class="seq-num red">4</div>
+            <div class="seq-content">
+              <h4>8:30 PM End-of-Day Blind Drawer Reconciliation</h4>
+              <p>At shift close, receptionist clicks "End-of-Day Close" and enters the physical cash counted in the drawer (e.g. ₦34,000). System computes variance: <em>Expected ₦34,000 | Counted ₦34,000 | Variance ₦0.00 (Zero-Discrepancy)</em>.</p>
+            </div>
+          </div>
+
+          <div class="seq-step">
+            <div class="seq-num blue">5</div>
+            <div class="seq-content">
+              <h4>Automated 1-Tap WhatsApp Audit to Owner</h4>
+              <p>Terminal compiles an encrypted summary and dispatches it straight to the Gym Owner's private WhatsApp with total revenue, POS card slip count, transfer count, and cashier signature.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5 -->
+      <h2>5. The NEPA Switch: Power Cut & Router Outage Resilience</h2>
+      <p>In Lagos, utility power (NEPA) drops frequently. When power fails, 45 to 60 seconds elapse before the diesel generator activates. During this gap, standard Wi-Fi routers switch off and reboot, taking an additional 60 seconds to restore connectivity.</p>
+
+      <div class="callout green">
+        <div class="callout-title">
+          <span>⚡</span> FitLedger Offline Resilience Architecture
+        </div>
+        While legacy gym software crashes or logs cashiers out, FitLedger operates continuously on battery-powered tablets, phones, or laptops:
+        <ul style="margin: 8px 0 0 20px; font-size: 12.5px;">
+          <li><strong>Local Ingestion:</strong> The receptionist continues checking in members and registering walk-ins without internet.</li>
+          <li><strong>IndexedDB Storage:</strong> Member validity is confirmed against local browser cache. The audio chime sounds normally.</li>
+          <li><strong>Outbox Queue:</strong> Check-ins and sales are appended to an offline persistent queue.</li>
+          <li><strong>Silent Batch Reconnection:</strong> The instant the generator restores Wi-Fi (<code>window.addEventListener('online')</code>), FitLedger flushes the queue to Supabase Cloud PostgreSQL in a single atomic transaction. Discrepancy: <strong>Zero</strong>.</li>
+        </ul>
+      </div>
+
+      <!-- Section 6 -->
+      <div class="page-break"></div>
+      <h2>6. Multi-Tenant Relational Database Schema (ERD)</h2>
+      <p>Data isolation is strictly enforced via PostgreSQL Row-Level Security (RLS) on Supabase Cloud. Every query is partitioned by <code>gym_id</code>.</p>
+
+      <div class="diagram-box">
+        <div class="diagram-title">
+          <span>FIGURE 3: RELATIONAL DATABASE ENTITY SCHEMA & AUDIT ARCHITECTURE</span>
+          <span class="diagram-subtitle">PostgreSQL Tables hosted on Supabase Cloud</span>
+        </div>
+
+        <div class="erd-grid">
+          <!-- Table: GYMS -->
+          <div class="erd-table">
+            <div class="erd-header">
+              <span>GYMS</span>
+              <span class="badge">Tenant Root</span>
+            </div>
+            <div class="erd-body">
+              <div class="erd-field"><span class="erd-key">PK</span> id <span class="erd-type">uuid</span></div>
+              <div class="erd-field">name <span class="erd-type">varchar(100)</span></div>
+              <div class="erd-field">slug <span class="erd-type">varchar(50)</span></div>
+              <div class="erd-field">location <span class="erd-type">text</span></div>
+              <div class="erd-field">owner_name <span class="erd-type">varchar(80)</span></div>
+              <div class="erd-field">owner_phone <span class="erd-type">varchar(20)</span></div>
+              <div class="erd-field">plan_tier <span class="erd-type">varchar(20)</span></div>
+              <div class="erd-field">monthly_fee <span class="erd-type">numeric(12,2)</span></div>
+            </div>
+          </div>
+
+          <!-- Table: STAFF -->
+          <div class="erd-table">
+            <div class="erd-header">
+              <span>STAFF</span>
+              <span class="badge blue">Access</span>
+            </div>
+            <div class="erd-body">
+              <div class="erd-field"><span class="erd-key">PK</span> id <span class="erd-type">uuid</span></div>
+              <div class="erd-field"><span class="erd-key">FK</span> gym_id <span class="erd-type">uuid</span></div>
+              <div class="erd-field">full_name <span class="erd-type">varchar(80)</span></div>
+              <div class="erd-field">role <span class="erd-type">varchar(30)</span></div>
+              <div class="erd-field">pin_code <span class="erd-type">char(4)</span></div>
+              <div class="erd-field">phone <span class="erd-type">varchar(20)</span></div>
+              <div class="erd-field">shift_status <span class="erd-type">varchar(20)</span></div>
+            </div>
+          </div>
+
+          <!-- Table: MEMBERS -->
+          <div class="erd-table">
+            <div class="erd-header">
+              <span>MEMBERS</span>
+              <span class="badge">Directory</span>
+            </div>
+            <div class="erd-body">
+              <div class="erd-field"><span class="erd-key">PK</span> id <span class="erd-type">uuid</span></div>
+              <div class="erd-field"><span class="erd-key">FK</span> gym_id <span class="erd-type">uuid</span></div>
+              <div class="erd-field">full_name <span class="erd-type">varchar(80)</span></div>
+              <div class="erd-field">phone <span class="erd-type">varchar(20)</span></div>
+              <div class="erd-field">member_code <span class="erd-type">char(6)</span></div>
+              <div class="erd-field">plan_tier <span class="erd-type">varchar(30)</span></div>
+              <div class="erd-field">expiry_date <span class="erd-type">date</span></div>
+              <div class="erd-field">status <span class="erd-type">varchar(20)</span></div>
+            </div>
+          </div>
+
+          <!-- Table: TRANSACTIONS -->
+          <div class="erd-table">
+            <div class="erd-header">
+              <span>POS_TRANSACTIONS</span>
+              <span class="badge">Financial</span>
+            </div>
+            <div class="erd-body">
+              <div class="erd-field"><span class="erd-key">PK</span> id <span class="erd-type">uuid</span></div>
+              <div class="erd-field"><span class="erd-key">FK</span> gym_id <span class="erd-type">uuid</span></div>
+              <div class="erd-field"><span class="erd-key">FK</span> member_id <span class="erd-type">uuid</span></div>
+              <div class="erd-field">item_name <span class="erd-type">varchar(100)</span></div>
+              <div class="erd-field">amount_paid <span class="erd-type">numeric(12,2)</span></div>
+              <div class="erd-field">payment_method <span class="erd-type">varchar(20)</span></div>
+              <div class="erd-field">cashier_pin <span class="erd-type">char(4)</span></div>
+              <div class="erd-field">created_at <span class="erd-type">timestamp</span></div>
+            </div>
+          </div>
+
+          <!-- Table: SHIFT_SETTLEMENTS -->
+          <div class="erd-table">
+            <div class="erd-header">
+              <span>SHIFT_SETTLEMENTS</span>
+              <span class="badge red">Audits</span>
+            </div>
+            <div class="erd-body">
+              <div class="erd-field"><span class="erd-key">PK</span> id <span class="erd-type">uuid</span></div>
+              <div class="erd-field"><span class="erd-key">FK</span> gym_id <span class="erd-type">uuid</span></div>
+              <div class="erd-field">expected_cash <span class="erd-type">numeric(12,2)</span></div>
+              <div class="erd-field">physical_cash <span class="erd-type">numeric(12,2)</span></div>
+              <div class="erd-field">variance <span class="erd-type">numeric(12,2)</span></div>
+              <div class="erd-field">staff_pin <span class="erd-type">char(4)</span></div>
+              <div class="erd-field">sent_to_whatsapp <span class="erd-type">boolean</span></div>
+              <div class="erd-field">created_at <span class="erd-type">timestamp</span></div>
+            </div>
+          </div>
+
+          <!-- Table: ATTENDANCE_LOGS -->
+          <div class="erd-table">
+            <div class="erd-header">
+              <span>ATTENDANCE_LOGS</span>
+              <span class="badge purple">Access</span>
+            </div>
+            <div class="erd-body">
+              <div class="erd-field"><span class="erd-key">PK</span> id <span class="erd-type">uuid</span></div>
+              <div class="erd-field"><span class="erd-key">FK</span> gym_id <span class="erd-type">uuid</span></div>
+              <div class="erd-field"><span class="erd-key">FK</span> member_id <span class="erd-type">uuid</span></div>
+              <div class="erd-field">check_in_time <span class="erd-type">timestamp</span></div>
+              <div class="erd-field">method <span class="erd-type">varchar(20)</span></div>
+              <div class="erd-field">status <span class="erd-type">varchar(20)</span></div>
+              <div class="erd-field">verified_by_staff <span class="erd-type">varchar(80)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 7 -->
+      <h2>7. Subscription Pricing & Monetization Model</h2>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Tier Name</th>
+            <th>Monthly Price</th>
+            <th>Target Fitness Center Profile</th>
+            <th>Key Included Capabilities</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Starter Plan</strong></td>
+            <td><strong>₦25,000 / month</strong></td>
+            <td>Single-branch neighborhood gyms (up to 200 members).</td>
+            <td>Sub-2s check-in, 45s member registration, Pro-Shop retail POS, 1-Click Paystack renewal, offline NEPA resilience, 1-Click Bulk Excel Importer.</td>
+          </tr>
+          <tr>
+            <td><strong>Growth Plan</strong><br><span class="badge blue">Anchor Tier</span></td>
+            <td><strong>₦45,000 / month</strong></td>
+            <td>Growing commercial fitness clubs (unlimited members).</td>
+            <td>Everything in Starter + End-of-Day Blind Cash Drawer Reconciliation, Automated WhatsApp Closing Report, PT Trainer Commission Splits, At-Risk Churn Radar.</td>
+          </tr>
+          <tr>
+            <td><strong>Enterprise Plan</strong></td>
+            <td><strong>₦95,000 / month</strong></td>
+            <td>Multi-branch chains & premier health clubs.</td>
+            <td>Everything in Growth + Hardware Turnstile Gate Integration, Multi-Branch Roaming VIP passes, White-label custom domain, Corporate HR payroll billing.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Section 8 -->
+      <div class="page-break"></div>
+      <h2>8. Pilot Rollout Strategy & First Anchor Gym: Fitflex Fitness Irawo</h2>
+      <p>The founder's commercial launch roadmap begins with an on-the-ground anchor pilot at <strong>Fitflex Fitness Irawo</strong> (Owode Onirin / Ikorodu Road axis), where the founder exercises daily as an active member.</p>
+
+      <div class="callout blue">
+        <div class="callout-title">
+          <span>📍</span> The Fitflex Irawo Walk-In Pitch Script (3-Minute Executive Demo)
+        </div>
+        <strong>Step 1: The Problem Hook</strong><br>
+        <em>"Coach / Manager, I workout here every morning. I've noticed when people pay cash for day passes or drinks while you're busy on the gym floor, the receptionist writes it in a paper book. At the end of the month, how many of those cash passes never actually reached your pocket?"</em><br><br>
+        
+        <strong>Step 2: The Live Demonstration (Smartphone / Tablet)</strong><br>
+        Open <code>fitledger-v1.vercel.app/terminal</code> showing <strong>"Fitflex Fitness Irawo"</strong>.<br>
+        • Type member code <code>#124253</code> $ightarrow$ Crisp chime sounds.<br>
+        • Click <strong>Renew</strong> $ightarrow$ Instant Paystack card/USSD checkout popup.<br>
+        • Click <strong>End-of-Day Close</strong> $ightarrow$ Show the blind cash variance calculation and the WhatsApp summary ready to send to the owner's phone at 8:30 PM.<br><br>
+        
+        <strong>Step 3: The Zero-Risk Free Pilot Offer</strong><br>
+        <em>"I will set this up for Fitflex today for 14 days completely FREE. You don't pay a single Kobo. Snap a picture of your paper register, click 'Import', and all your members are in. If it doesn't save you at least ₦150,000 in cash leakage in 14 days, you keep using the paper book."</em>
+      </div>
+
+      <!-- Signoff Section -->
+      <h2>9. Architectural Sign-Off & Approvals</h2>
+      <p>This Business Requirements Document has been reviewed and verified for architectural integrity, data security, Nigerian market suitability, and production readiness.</p>
+
+      <div class="signoff-grid">
+        <div class="signoff-box">
+          <div class="signoff-role">Founder & Chief Architect</div>
+          <div class="signoff-line"></div>
+          <div class="signoff-name">Abiodun Oludolapo</div>
+          <div class="signoff-title">FitLedger Technologies Ltd.</div>
+        </div>
+
+        <div class="signoff-box">
+          <div class="signoff-role">Lead Product Engineer</div>
+          <div class="signoff-line"></div>
+          <div class="signoff-name">FitLedger Core Team</div>
+          <div class="signoff-title">Distributed Systems & Security</div>
+        </div>
+
+        <div class="signoff-box">
+          <div class="signoff-role">Commercial Pilot Operations</div>
+          <div class="signoff-line"></div>
+          <div class="signoff-name">Fitflex Operations Lead</div>
+          <div class="signoff-title">Fitflex Fitness Irawo / Lagos</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
