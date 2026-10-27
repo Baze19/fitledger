@@ -30,7 +30,7 @@ export interface Member {
   ptSessionDates: string[]; // ISO date strings
 }
 
-export type CheckInMethod = 'qr_scan' | 'phone_lookup' | 'manual_override';
+export type CheckInMethod = 'qr_scan' | 'phone_lookup' | 'manual_override' | 'self_qr_scan';
 export type CheckInStatus = 'allowed' | 'denied';
 
 export interface CheckIn {

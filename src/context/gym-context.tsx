@@ -53,7 +53,9 @@ interface GymContextType {
   };
   setScanResultIdle: () => void;
   checkInMember: (query: string, method?: 'qr_scan' | 'phone_lookup') => { success: boolean; member?: Member; reason?: string };
-  registerMember: (data: { fullName: string; phoneNumber: string; planId: string; paymentMethod: Transaction['paymentMethod'] }) => Member;
+  recordSelfCheckIn: (memberIdOrCode: string) => { success: boolean; message: string };
+  registerMember: (data: { fullName: string; phoneNumber: string; planId: string; paymentMethod: Transaction['paymentMethod']; photoUrl?: string }) => Member;
+  updateMemberPhoto: (memberIdOrCode: string, photoUrl: string) => void;
   bulkImportMembers: (items: { fullName: string; phoneNumber: string; status: 'active' | 'expired'; currentPlanId: string; subscriptionEndDate: string; remainingPtSessions: number }[]) => { count: number; importedCodes: string[] };
   renewMember: (memberId: string, planId: string, paymentMethod: Transaction['paymentMethod']) => void;
   overrideExpiredEntry: (memberId: string, reason: string) => void;
@@ -841,9 +843,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     phoneNumber: string;
     planId: string;
     paymentMethod: Transaction['paymentMethod'];
+    photoUrl?: string;
   }) => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || plans[1];
     const newCode = `${Math.floor(100000 + Math.random() * 900000)}`;
+    const avatar = data.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.fullName)}&background=dc2626&color=ffffff&bold=true&size=256`;
 
     const newMember: Member = {
       id: `mem_${Date.now()}`,
@@ -852,7 +856,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       fullName: data.fullName,
       phoneNumber: data.phoneNumber,
       email: `${data.fullName.toLowerCase().replace(/\s+/g, '.')}@gymmember.ng`,
-      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250&auto=format&fit=crop&q=80',
+      photoUrl: avatar,
       status: 'active',
       joinedDate: '2026-10-22',
       currentPlanId: selectedPlan.id,
@@ -944,6 +948,100 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
 
     return newMember;
+  };
+
+  // Update Member Profile Photo (Anti-Pass Sharing & Identification)
+  const updateMemberPhoto = (memberIdOrCode: string, photoUrl: string) => {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === memberIdOrCode || m.memberCode === memberIdOrCode
+          ? { ...m, photoUrl }
+          : m
+      )
+    );
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: 'Member Self-Service / Front Desk',
+      action: 'Member Photo Updated',
+      details: `Profile photo updated for member [${memberIdOrCode}]. Identity verification refreshed.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    if (supabase && isSupabaseConfigured) {
+      supabase
+        .from('members')
+        .update({ avatar_url: photoUrl })
+        .or(`id.eq.${memberIdOrCode},pass_code.eq.${memberIdOrCode}`)
+        .then(({ error }) => {
+          if (error) console.warn('Supabase photo update fallback:', error?.message);
+        });
+    }
+  };
+
+  // Self Check-In via Member PWA (Counter QR Scan or Turnstile Relay)
+  const recordSelfCheckIn = (memberIdOrCode: string) => {
+    const found = members.find((m) => m.id === memberIdOrCode || m.memberCode === memberIdOrCode);
+    if (!found) {
+      return { success: false, message: 'Member pass not found. Please contact the front desk.' };
+    }
+
+    if (found.status === 'expired') {
+      return {
+        success: false,
+        message: `Your membership expired on ${found.subscriptionEndDate}. Please renew via Paystack or visit the desk.`,
+      };
+    }
+
+    const today = new Date();
+    const todayStr = `2026-10-${today.getDate() < 10 ? '0' + today.getDate() : today.getDate()}`;
+    const alreadyLoggedToday = found.visitDates.includes(todayStr);
+
+    const newCheckIn: CheckIn = {
+      id: `chk_${Date.now()}`,
+      tenantId: activeTenant.id,
+      memberId: found.id,
+      memberCode: found.memberCode,
+      memberName: found.fullName,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      method: 'self_qr_scan',
+      status: 'allowed',
+      verifiedByStaffName: 'Turnstile / Self-Scan',
+    };
+    setCheckIns((prev) => [newCheckIn, ...prev]);
+
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === found.id
+          ? {
+              ...m,
+              totalVisitsThisMonth: alreadyLoggedToday ? m.totalVisitsThisMonth : m.totalVisitsThisMonth + 1,
+              visitDates: alreadyLoggedToday ? m.visitDates : [...m.visitDates, todayStr],
+            }
+          : m
+      )
+    );
+
+    if (supabase && isSupabaseConfigured) {
+      supabase
+        .from('attendance_logs')
+        .insert({
+          member_id: found.id,
+          status: 'Valid Entry (Self-Scan)',
+          staff_pin: 'SELF',
+        })
+        .then(({ error }) => {
+          if (error) console.warn('Supabase self check-in fallback:', error?.message);
+        });
+    }
+
+    return {
+      success: true,
+      message: `Welcome to ${activeTenant.name}! Self check-in verified. Have a great workout! 🔥`,
+    };
   };
 
   // Bulk Import Legacy Members (1-Click Excel / Notebook Migration)
@@ -1262,7 +1360,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         activeScanResult,
         setScanResultIdle,
         checkInMember,
+        recordSelfCheckIn,
         registerMember,
+        updateMemberPhoto,
         bulkImportMembers,
         renewMember,
         overrideExpiredEntry,

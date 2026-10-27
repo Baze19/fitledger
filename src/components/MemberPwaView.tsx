@@ -1,15 +1,89 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useGym } from '@/context/gym-context';
-import { QrCode, Calendar, Dumbbell, Users, CreditCard, ChevronRight, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { 
+  QrCode, Calendar, Dumbbell, Users, CreditCard, ChevronRight, 
+  CheckCircle2, Clock, Sparkles, Camera, Zap, Share2, Copy, 
+  Check, Maximize2, ScanLine, Gift, X 
+} from 'lucide-react';
 
 export function MemberPwaView() {
-  const { members, renewMember, activeTenant } = useGym();
-  // We showcase Abiodun Oludolapo (#124253) from the screenshots!
+  const { members, renewMember, activeTenant, updateMemberPhoto, recordSelfCheckIn } = useGym();
+  // We showcase active member (#124253)
   const member = members.find((m) => m.memberCode === '124253') || members[0];
+  
+  // Modals
   const [showPtModal, setShowPtModal] = useState(false);
   const [ptBooked, setPtBooked] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [scanTab, setScanTab] = useState<'self_checkin' | 'fullscreen_badge'>('self_checkin');
+  const [scanSuccessMsg, setScanSuccessMsg] = useState<string | null>(null);
+
+  const [showReferModal, setShowReferModal] = useState(false);
+  const [referCopied, setReferCopied] = useState(false);
+
+  // Photo Upload State
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoToast, setPhotoToast] = useState<string | null>(null);
+
+  // Audio Chime for Self Check-in
+  const playChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      // AudioContext unavailable
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        updateMemberPhoto(member.id, dataUrl);
+        setPhotoToast('✓ Profile photo updated!');
+        setTimeout(() => setPhotoToast(null), 3000);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSelfCheckInTrigger = () => {
+    const res = recordSelfCheckIn(member.id);
+    if (res.success) {
+      playChime();
+      setScanSuccessMsg(res.message);
+      setTimeout(() => {
+        setScanSuccessMsg(null);
+        setShowScanModal(false);
+      }, 2500);
+    } else {
+      alert(res.message);
+    }
+  };
+
+  const handleCopyReferral = () => {
+    const refUrl = `https://fitledger-v1.vercel.app/m/${member.memberCode}?ref=${member.memberCode}`;
+    navigator.clipboard.writeText(refUrl).then(() => {
+      setReferCopied(true);
+      setTimeout(() => setReferCopied(false), 2500);
+    });
+  };
 
   // October 2026 calendar days
   const daysInOctober = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -24,9 +98,21 @@ export function MemberPwaView() {
     return member.ptSessionDates.includes(dateStr);
   };
 
+  const memberBarcodeTag = `${member.memberCode}-${member.fullName.replace(/[^a-zA-Z]/g, '').slice(0, 8).toUpperCase()}-VIP`;
+
   return (
-    <div className="flex flex-col items-center justify-center py-4 space-y-4">
+    <div className="flex flex-col items-center justify-center py-4 space-y-4 font-sans">
       
+      {/* Hidden Photo Upload Input */}
+      <input
+        type="file"
+        ref={photoInputRef}
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={handlePhotoUpload}
+      />
+
       {/* PWA Explainer Pill */}
       <div className="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-2xl flex items-center gap-2 text-xs text-zinc-300">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -45,7 +131,7 @@ export function MemberPwaView() {
           <span className="font-semibold text-emerald-400 flex items-center gap-1">4G 46%</span>
         </div>
 
-        {/* Club Header (Red banner matching i-Fitness Screenshot 2 & 3) */}
+        {/* Club Header */}
         <div className="bg-red-600 -mx-4 -mt-1 px-4 py-3 flex items-center justify-between text-white shadow-md">
           <div className="flex items-center gap-2">
             <div className="p-1 hover:bg-red-700 rounded-lg cursor-pointer">
@@ -58,18 +144,38 @@ export function MemberPwaView() {
               <p className="text-[10px] text-red-100">{activeTenant.location}</p>
             </div>
           </div>
-          <span className="text-[10px] bg-red-800/80 px-2 py-0.5 rounded-full font-bold">VIP</span>
+          <span className="text-[10px] bg-red-800/80 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">VIP</span>
         </div>
+
+        {/* Toast Notification */}
+        {photoToast && (
+          <div className="mx-2 mt-2 bg-emerald-500/20 border border-emerald-500/40 p-2 rounded-xl text-center text-xs font-bold text-emerald-300">
+            {photoToast}
+          </div>
+        )}
 
         {/* Scrollable Container */}
         <div className="space-y-4 pt-3 pb-6 text-zinc-100 max-h-[640px] overflow-y-auto pr-1">
 
-          {/* Member Card Profile (Matching Screenshot 1) */}
+          {/* Member Card Profile (Tap Photo to Update/Snap) */}
           <div className="bg-zinc-900 border border-zinc-800 p-3.5 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full border-2 border-red-500 overflow-hidden bg-zinc-800 flex-shrink-0">
-                <img src={member.photoUrl} alt="Abiodun" className="w-full h-full object-cover" />
+              <div
+                onClick={() => photoInputRef.current?.click()}
+                className="relative cursor-pointer group flex-shrink-0"
+                title="Tap to snap selfie or change photo"
+              >
+                <div className="w-12 h-12 rounded-full border-2 border-red-500 overflow-hidden bg-zinc-800 flex items-center justify-center relative shadow-md">
+                  <img src={member.photoUrl} alt={member.fullName} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-60 group-hover:opacity-100 transition">
+                    <Camera className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <span className="absolute -bottom-1 -right-1 bg-red-600 text-white rounded-full p-1 shadow">
+                  <Camera className="w-2.5 h-2.5" />
+                </span>
               </div>
+
               <div>
                 <h3 className="font-black text-sm text-white leading-tight">{member.fullName}</h3>
                 <p className="text-xs text-zinc-400 font-mono">#{member.memberCode}</p>
@@ -79,7 +185,7 @@ export function MemberPwaView() {
                 </div>
               </div>
             </div>
-            <span className="text-[10px] bg-zinc-800 text-zinc-300 px-2 py-1 rounded-xl font-bold border border-zinc-700">
+            <span className="text-[10px] bg-zinc-800 text-zinc-300 px-2.5 py-1 rounded-xl font-bold border border-zinc-700">
               Monthly VIP
             </span>
           </div>
@@ -100,48 +206,57 @@ export function MemberPwaView() {
                 <span className="w-4 h-full bg-black"></span><span className="w-1 h-full bg-black"></span><span className="w-2 h-full bg-black"></span><span className="w-3 h-full bg-black"></span>
               </div>
               <p className="text-[11px] font-mono font-black text-black tracking-widest">
-                {member.memberCode}-ABIODUN-VIP
+                {memberBarcodeTag}
               </p>
             </div>
             <p className="text-[11px] text-zinc-400">Hold near counter scanner or turnstile to clock in</p>
           </div>
 
-          {/* Quick Action Icons Grid (Matching Screenshot 3) */}
+          {/* Quick Action Icons Grid (All 4 Fully Functional) */}
           <div className="grid grid-cols-4 gap-2 text-center text-[11px]">
-            <div className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-red-500 cursor-pointer transition">
+            <div
+              onClick={() => setShowScanModal(true)}
+              className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-red-500 cursor-pointer transition active:scale-95"
+            >
               <QrCode className="w-5 h-5 text-red-500" />
               <span className="font-medium text-zinc-300">Scan</span>
             </div>
+
             <div
               onClick={() => setShowPtModal(true)}
-              className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-red-500 cursor-pointer transition"
+              className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-blue-500 cursor-pointer transition active:scale-95"
             >
               <Dumbbell className="w-5 h-5 text-blue-400" />
               <span className="font-medium text-zinc-300">PT Book</span>
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-red-500 cursor-pointer transition">
+
+            <div
+              onClick={() => setShowReferModal(true)}
+              className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-purple-500 cursor-pointer transition active:scale-95"
+            >
               <Users className="w-5 h-5 text-purple-400" />
               <span className="font-medium text-zinc-300">Refer</span>
             </div>
+
             <div
               onClick={() => renewMember(member.id, 'plan_monthly_vip', 'paystack_online')}
-              className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-red-500 cursor-pointer transition"
+              className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-2xl flex flex-col items-center gap-1 hover:border-emerald-500 cursor-pointer transition active:scale-95"
             >
               <CreditCard className="w-5 h-5 text-emerald-400" />
-              <span className="font-medium text-zinc-300">Renew</span>
+              <span className="font-medium text-emerald-400">Renew</span>
             </div>
           </div>
 
-          {/* CTA: Book a PT Session Button (Red Pill like Screenshot 3) */}
+          {/* CTA: Book a PT Session Button */}
           <button
             onClick={() => setShowPtModal(true)}
-            className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs tracking-wider uppercase transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs tracking-wider uppercase transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
           >
             <Dumbbell className="w-4 h-4" />
             Book a PT Session ({member.remainingPtSessions} Left)
           </button>
 
-          {/* Attendance Visit History Calendar (Matching Screenshot 2 & 3) */}
+          {/* Attendance Visit History Calendar */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -166,7 +281,6 @@ export function MemberPwaView() {
                 </span>
               ))}
 
-              {/* Offset for Oct 1, 2026 (Thursday -> 3 empty slots) */}
               <div className="p-1"></div>
               <div className="p-1"></div>
               <div className="p-1"></div>
@@ -174,7 +288,7 @@ export function MemberPwaView() {
               {daysInOctober.map((day) => {
                 const visited = isVisitDay(day);
                 const pt = isPtDay(day);
-                const isToday = day === 22;
+                const isToday = day === 22 || day === new Date().getDate();
 
                 return (
                   <div
@@ -197,14 +311,13 @@ export function MemberPwaView() {
               })}
             </div>
 
-            {/* Consistency Badge */}
             <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 flex items-center justify-between text-xs">
               <span className="text-zinc-400">Total Visits This Month:</span>
               <span className="font-extrabold text-emerald-400 text-sm">{member.totalVisitsThisMonth} Workouts 🔥</span>
             </div>
           </div>
 
-          {/* 2026 AI Motivator Widget (Something i-Fitness doesn't have) */}
+          {/* AI Coach Insights */}
           <div className="bg-gradient-to-r from-red-950/40 via-zinc-900 to-zinc-900 border border-red-500/20 p-3.5 rounded-2xl flex items-start gap-3">
             <div className="w-7 h-7 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center flex-shrink-0 mt-0.5">
               <Sparkles className="w-4 h-4" />
@@ -212,7 +325,7 @@ export function MemberPwaView() {
             <div>
               <p className="text-xs font-bold text-white">AI Coach Insights</p>
               <p className="text-[11px] text-zinc-400 leading-relaxed mt-0.5">
-                "You've crushed 3 workouts this week! Coach Tunde recommends hitting lower body tomorrow to keep your consistency streak going."
+                "You've crushed {member.totalVisitsThisMonth} workouts this month! Coach Tunde recommends hitting lower body tomorrow to keep your consistency streak going."
               </p>
             </div>
           </div>
@@ -221,7 +334,179 @@ export function MemberPwaView() {
 
       </div>
 
-      {/* Book PT Session Modal */}
+      {/* ----------------- MODAL 1: SCAN (Self Check-in & Zoom Barcode) ----------------- */}
+      {showScanModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 max-w-sm w-full text-white space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center">
+                  <QrCode className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm">Member Scanner</h3>
+                  <p className="text-[10px] text-zinc-400">Self Check-In & Scanner Badge</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowScanModal(false);
+                  setScanSuccessMsg(null);
+                }}
+                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tab Switcher */}
+            <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs font-bold gap-1">
+              <button
+                onClick={() => setScanTab('self_checkin')}
+                className={`flex-1 py-1.5 rounded-lg transition ${
+                  scanTab === 'self_checkin' ? 'bg-red-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Scan Counter QR
+              </button>
+              <button
+                onClick={() => setScanTab('fullscreen_badge')}
+                className={`flex-1 py-1.5 rounded-lg transition ${
+                  scanTab === 'fullscreen_badge' ? 'bg-red-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Fullscreen Pass
+              </button>
+            </div>
+
+            {scanSuccessMsg ? (
+              <div className="text-center py-6 space-y-3 bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-4">
+                <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
+                <h4 className="font-black text-base text-emerald-400">Check-In Confirmed!</h4>
+                <p className="text-xs text-zinc-300">{scanSuccessMsg}</p>
+              </div>
+            ) : scanTab === 'self_checkin' ? (
+              <div className="space-y-4 text-center">
+                <div className="relative w-52 h-52 mx-auto bg-zinc-900 border-2 border-red-500/60 rounded-2xl overflow-hidden flex flex-col items-center justify-center shadow-inner">
+                  <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-white"></div>
+                  <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-white"></div>
+                  <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-white"></div>
+                  <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-white"></div>
+                  <div className="absolute w-full h-0.5 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,1)]"></div>
+                  <ScanLine className="w-10 h-10 text-zinc-600 mb-2" />
+                  <p className="text-[11px] font-bold text-zinc-300">Point at Counter QR</p>
+                  <p className="text-[9px] text-zinc-500">{activeTenant.name}</p>
+                </div>
+
+                <p className="text-xs text-zinc-400">
+                  Scan the counter QR code at the desk to clock in instantly.
+                </p>
+
+                <button
+                  onClick={handleSelfCheckInTrigger}
+                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 text-yellow-300" />
+                  ⚡ Tap to Clock In (Simulate Desk Scan)
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-center">
+                <div className="bg-white p-4 rounded-2xl space-y-2 shadow-2xl">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">High Contrast Laser Pass</p>
+                  <div className="w-36 h-36 mx-auto bg-black p-2 rounded-xl flex items-center justify-center">
+                    <QrCode className="w-32 h-32 text-white" />
+                  </div>
+                  <div className="flex items-center justify-center gap-[3px] h-10 w-full pt-1">
+                    <span className="w-2 h-full bg-black"></span><span className="w-4 h-full bg-black"></span><span className="w-1 h-full bg-black"></span><span className="w-3 h-full bg-black"></span>
+                    <span className="w-1.5 h-full bg-black"></span><span className="w-5 h-full bg-black"></span><span className="w-2 h-full bg-black"></span><span className="w-1 h-full bg-black"></span>
+                  </div>
+                  <p className="font-mono font-black text-black text-xs tracking-widest">{member.memberCode}</p>
+                </div>
+                <p className="text-xs text-zinc-400">Hold near scanner or counter to enter</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- MODAL 2: REFER A WORKOUT BUDDY ----------------- */}
+      {showReferModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 max-w-sm w-full text-white space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center">
+                  <Gift className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm">Refer a Workout Buddy</h3>
+                  <p className="text-[10px] text-zinc-400">Give ₦2,000, Get 5 Free Days</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowReferModal(false)}
+                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-950/40 via-zinc-900 to-zinc-900 border border-purple-500/30 p-4 rounded-2xl text-center space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Gym Loyalty Program</p>
+              <h4 className="font-black text-base text-white">Give ₦2,000 Off, Get 5 Free Days! 🔥</h4>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Invite your friends to workout at <strong>{activeTenant.name}</strong>. When they sign up using your code, they get ₦2,000 off, and you get 5 free workout days!
+              </p>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-2xl space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 text-center">Your Unique Referral Code</p>
+              <div className="bg-black border border-purple-500/50 p-2.5 rounded-xl text-center">
+                <span className="font-mono font-black text-xl text-purple-300 tracking-wider">#{member.memberCode}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <a
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                  `*Hey! I workout at ${activeTenant.name} (${activeTenant.location})* 🏋️‍♂️💪\n\nJoin me this month and get *₦2,000 off* your VIP membership pass!\n\nUse my referral code *#${member.memberCode}* or view my gym pass here:\n👉 https://fitledger-v1.vercel.app/m/${member.memberCode}\n\nLet's get fit together!`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+                📱 Share via WhatsApp
+              </a>
+
+              <button
+                onClick={handleCopyReferral}
+                className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {referCopied ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-400 font-bold">✓ Copied to Clipboard!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 text-zinc-400" />
+                    <span>Copy Referral Link</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+              <span>Your Referral Stats:</span>
+              <span className="font-bold text-white">0 Friends • 0 Days Earned</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- MODAL 3: PT BOOKING ----------------- */}
       {showPtModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 max-w-xs w-full text-white space-y-4">
@@ -243,7 +528,7 @@ export function MemberPwaView() {
                     setPtBooked(false);
                     setShowPtModal(false);
                   }}
-                  className="w-full py-2 bg-zinc-800 rounded-xl text-xs font-bold text-white mt-2"
+                  className="w-full py-2 bg-zinc-800 rounded-xl text-xs font-bold text-white mt-2 cursor-pointer"
                 >
                   Close
                 </button>
@@ -271,7 +556,7 @@ export function MemberPwaView() {
                 </div>
                 <button
                   onClick={() => setPtBooked(true)}
-                  className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition shadow-md shadow-red-600/20"
+                  className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition shadow-md shadow-red-600/20 cursor-pointer"
                 >
                   Confirm Booking
                 </button>

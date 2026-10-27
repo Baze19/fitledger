@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useGym } from '@/context/gym-context';
 import { ManualOverrideModal } from '@/components/ManualOverrideModal';
 import { Member, Transaction, PaymentMethod } from '@/types';
@@ -22,6 +22,9 @@ import {
   Receipt,
   Printer,
   Send,
+  Camera,
+  Upload,
+  X,
 } from 'lucide-react';
 
 interface FrontDeskViewProps {
@@ -57,7 +60,20 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   const [newPhone, setNewPhone] = useState('');
   const [newPlanId, setNewPlanId] = useState(plans[1]?.id || 'plan_monthly_std');
   const [newPaymentMethod, setNewPaymentMethod] = useState<Transaction['paymentMethod']>('bank_transfer');
+  const [newPhotoUrl, setNewPhotoUrl] = useState<string>('');
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewPhotoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Retail State
   const [selectedRetailItem, setSelectedRetailItem] = useState(retailItems[0]?.id || 'ret_energy');
@@ -160,11 +176,13 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
             phoneNumber: newPhone,
             planId: newPlanId,
             paymentMethod: 'paystack_online',
+            photoUrl: newPhotoUrl || undefined,
           });
           playChime('success');
           setRegSuccess(`✓ Registered ${newMem.fullName} (#${newMem.memberCode}) via Paystack! Ref: ${ref}`);
           setNewFullName('');
           setNewPhone('');
+          setNewPhotoUrl('');
           setTimeout(() => setRegSuccess(null), 5000);
         },
       });
@@ -176,12 +194,14 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
       phoneNumber: newPhone,
       planId: newPlanId,
       paymentMethod: newPaymentMethod,
+      photoUrl: newPhotoUrl || undefined,
     });
 
     playChime('success');
     setRegSuccess(`✓ Registered ${newMem.fullName} (#${newMem.memberCode})! Digital pass sent to WhatsApp ${newMem.phoneNumber}`);
     setNewFullName('');
     setNewPhone('');
+    setNewPhotoUrl('');
     setTimeout(() => setRegSuccess(null), 5000);
   };
 
@@ -512,6 +532,54 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                 )}
 
                 <form onSubmit={handleRegisterSubmit} className="space-y-3 text-xs">
+                  {/* Member Photo Verification (Anti-Pass Sharing) */}
+                  <div className="bg-zinc-950 p-2.5 rounded-2xl border border-zinc-800">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      capture="user"
+                      onChange={handlePhotoFileChange}
+                      className="hidden"
+                    />
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-full border border-red-500/50 bg-zinc-900 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {newPhotoUrl ? (
+                            <img src={newPhotoUrl} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <Camera className="w-4 h-4 text-zinc-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-[11px] leading-tight">Member Profile Photo</p>
+                          <p className="text-[10px] text-zinc-500">Anti-pass sharing face check (Optional)</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <Upload className="w-3 h-3 text-red-400" />
+                          <span>{newPhotoUrl ? 'Change' : 'Snap / Upload'}</span>
+                        </button>
+                        {newPhotoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setNewPhotoUrl('')}
+                            className="p-1.5 bg-red-950/60 hover:bg-red-900/60 text-red-300 border border-red-800/50 rounded-lg transition cursor-pointer"
+                            title="Remove Photo"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Full Name</label>
                     <input
