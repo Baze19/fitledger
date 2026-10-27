@@ -26,6 +26,8 @@ import {
   Camera,
   Upload,
   X,
+  Expand,
+  Tablet,
 } from 'lucide-react';
 
 interface FrontDeskViewProps {
@@ -63,6 +65,8 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   const [newPaymentMethod, setNewPaymentMethod] = useState<Transaction['paymentMethod']>('bank_transfer');
   const [newPhotoUrl, setNewPhotoUrl] = useState<string>('');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [showTabletStandModal, setShowTabletStandModal] = useState(false);
+  const [kioskInput, setKioskInput] = useState('');
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,6 +146,32 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
       playChime('success');
     } else {
       playChime('error');
+    }
+  };
+
+  const handleKioskSubmit = (query?: string) => {
+    const val = (query ?? kioskInput).trim();
+    if (!val) return;
+    const res = checkInMember(val, 'phone_lookup');
+    if (res.success) {
+      playChime('success');
+      setTimeout(() => setKioskInput(''), 4000);
+    } else {
+      playChime('error');
+    }
+  };
+
+  const handleKioskKeypad = (char: string) => {
+    if (char === 'DEL') {
+      setKioskInput((prev) => prev.slice(0, -1));
+    } else if (char === 'CLEAR') {
+      setKioskInput('');
+    } else {
+      const next = kioskInput + char;
+      setKioskInput(next);
+      if (next.length === 6 && members.some((m) => m.memberCode === next)) {
+        handleKioskSubmit(next);
+      }
     }
   };
 
@@ -304,6 +334,38 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
         {/* Left Column (2 Cols): Search, Scan Result & Live Stream */}
         <div className="lg:col-span-2 space-y-5">
           
+          {/* i-Fitness Style Rush-Hour Tablet QR Stand Banner */}
+          <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-red-950/40 border border-red-500/30 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+            <div className="flex items-center gap-3.5">
+              <div className="w-14 h-14 bg-white rounded-2xl p-1.5 flex items-center justify-center flex-shrink-0 shadow-md border border-zinc-700">
+                <QrCode className="w-full h-full text-black" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
+                    i-Fitness Rush Mode
+                  </span>
+                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                    ● Counter QR Active
+                  </span>
+                </div>
+                <h4 className="text-white font-extrabold text-sm mt-0.5">Front-Desk Express Check-In Stand</h4>
+                <p className="text-zinc-400 text-[11px] leading-tight">
+                  Display on tablet during 7:00 AM rush. Members point their phone pass at this QR code to clock in!
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowTabletStandModal(true)}
+              className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-2xl text-xs font-bold transition flex items-center gap-2 border border-zinc-700 shadow-md cursor-pointer flex-shrink-0"
+            >
+              <Expand className="w-4 h-4 text-red-400" />
+              <span>Fullscreen Tablet Stand</span>
+            </button>
+          </div>
+
           {/* Quick Counter Search Bar */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
@@ -818,6 +880,117 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
         title="Snap Member Face"
         subtitle="Align face in frame for anti-theft check-in verification"
       />
+
+      {/* i-Fitness Style Fullscreen Counter Tablet Kiosk Stand */}
+      {showTabletStandModal && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between p-6 text-white animate-fade-in font-sans">
+          
+          {/* Top Bar */}
+          <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-600 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-red-600/30">
+                FL
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-white tracking-tight">{activeTenant.name}</h2>
+                <p className="text-xs text-zinc-400">{activeTenant.location}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-mono bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-xl text-emerald-400 font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Express Kiosk Stand
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowTabletStandModal(false)}
+                className="px-3.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-bold transition border border-zinc-700 cursor-pointer"
+              >
+                Exit Kiosk Mode
+              </button>
+            </div>
+          </div>
+
+          {/* Kiosk Body */}
+          <div className="max-w-4xl w-full mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center py-6">
+            
+            {/* Left: The Big QR Stand */}
+            <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-red-950/30 border border-zinc-800 p-8 rounded-3xl text-center space-y-4 shadow-2xl">
+              <div className="inline-block bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full">
+                Rush-Hour Express Scan
+              </div>
+              
+              {/* High Contrast QR Badge */}
+              <div className="bg-white p-5 rounded-3xl w-52 h-52 mx-auto flex items-center justify-center shadow-2xl border-4 border-zinc-200">
+                <QrCode className="w-full h-full text-black" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-black text-xl text-white">Scan to Check In</h3>
+                <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+                  Open your <strong>FitLedger pass</strong> on your phone and point your camera at this QR code to clock in instantly!
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-[10px] text-zinc-500 font-mono">Terminal ID: {activeTenant.slug.toUpperCase()}-COUNTER-01</span>
+              </div>
+            </div>
+
+            {/* Right: Phone Number / Pass Code Keypad */}
+            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl space-y-5 shadow-2xl">
+              <div className="space-y-1 text-center sm:text-left">
+                <h3 className="font-black text-base text-white">No Phone? Enter Details</h3>
+                <p className="text-xs text-zinc-400">Type your WhatsApp phone number or 6-digit pass code below:</p>
+              </div>
+
+              {/* Display Box */}
+              <div className="bg-zinc-950 border-2 border-red-500/50 rounded-2xl p-4 text-center">
+                <span className="text-2xl font-mono font-black tracking-widest text-white">
+                  {kioskInput || <span className="text-zinc-600">e.g. 0803... or 124253</span>}
+                </span>
+              </div>
+
+              {/* Touch Keypad Grid */}
+              <div className="grid grid-cols-3 gap-2.5">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLEAR', '0', 'DEL'].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => handleKioskKeypad(k)}
+                    className={`py-3.5 rounded-2xl font-black text-sm transition active:scale-95 cursor-pointer shadow ${
+                      k === 'CLEAR'
+                        ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs'
+                        : k === 'DEL'
+                        ? 'bg-zinc-800 hover:bg-zinc-700 text-red-400 text-xs'
+                        : 'bg-zinc-950 hover:bg-zinc-800 text-white border border-zinc-800 text-base'
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleKioskSubmit()}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-sm uppercase tracking-wider transition shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Clock In Now
+              </button>
+            </div>
+
+          </div>
+
+          {/* Bottom Footer */}
+          <div className="text-center text-xs text-zinc-500 border-t border-zinc-800 pt-3">
+            Powered by FitLedger OS • Lagos Zero-Trust Gym Architecture
+          </div>
+
+        </div>
+      )}
 
     </div>
   );
