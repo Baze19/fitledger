@@ -86,6 +86,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     message: string;
     member?: Member;
   }>({ status: 'idle', message: '' });
+  const [newReferralCode, setNewReferralCode] = useState('');
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +96,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     const checkinUrl = `${origin}/checkin?gym=${activeTenant.slug || activeTenant.id}`;
     QRCode.toDataURL(checkinUrl, {
       width: 450,
-      margin: 1,
+      margin: 3,
       color: {
         dark: '#000000',
         light: '#ffffff',
@@ -254,11 +255,19 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     if (!newFullName || !newPhone) return;
 
     const plan = plans.find((p) => p.id === newPlanId) || plans[1];
+    const isDayPass = plan.id === 'plan_daily' || plan.durationDays === 1;
+
+    // Check discount if referral code provided
+    let payableAmount = plan.price;
+    if (newReferralCode.trim() && activeTenant.referralProgram?.enabled && !isDayPass) {
+      const discount = activeTenant.referralProgram.friendDiscountNaira || 0;
+      payableAmount = Math.max(0, plan.price - discount);
+    }
 
     if (newPaymentMethod === 'paystack_online') {
       initializePaystackPayment({
         email: `${newFullName.toLowerCase().replace(/\s+/g, '.')}@gymmember.ng`,
-        amountInNaira: plan.price,
+        amountInNaira: payableAmount,
         fullName: newFullName,
         planName: plan.name,
         gymName: activeTenant.name,
@@ -269,12 +278,14 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
             planId: newPlanId,
             paymentMethod: 'paystack_online',
             photoUrl: newPhotoUrl || undefined,
+            referralCode: newReferralCode.trim() || undefined,
           });
           playChime('success');
           setRegSuccess(`✓ Registered ${newMem.fullName} (#${newMem.memberCode}) via Paystack! Ref: ${ref}`);
           setNewFullName('');
           setNewPhone('');
           setNewPhotoUrl('');
+          setNewReferralCode('');
           setTimeout(() => setRegSuccess(null), 5000);
         },
       });
@@ -287,6 +298,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
       planId: newPlanId,
       paymentMethod: newPaymentMethod,
       photoUrl: newPhotoUrl || undefined,
+      referralCode: newReferralCode.trim() || undefined,
     });
 
     playChime('success');
@@ -294,6 +306,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     setNewFullName('');
     setNewPhone('');
     setNewPhotoUrl('');
+    setNewReferralCode('');
     setTimeout(() => setRegSuccess(null), 5000);
   };
 
@@ -445,8 +458,12 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
           {/* i-Fitness Style Rush-Hour Tablet QR Stand Banner */}
           <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-red-950/40 border border-red-500/30 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center gap-3.5">
-              <div className="w-14 h-14 bg-white rounded-2xl p-1.5 flex items-center justify-center flex-shrink-0 shadow-md border border-zinc-700">
-                <QrCode className="w-full h-full text-black" />
+              <div className="w-14 h-14 bg-white rounded-2xl p-1 flex items-center justify-center flex-shrink-0 shadow-md border border-zinc-700 overflow-hidden">
+                {kioskQrDataUrl ? (
+                  <img src={kioskQrDataUrl} alt="Counter Express QR" className="w-full h-full object-contain" />
+                ) : (
+                  <QrCode className="w-full h-full text-black" />
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -800,6 +817,50 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                       ))}
                     </select>
                   </div>
+
+                  {/* Dynamic Referral Code Field if Gym Owner Enabled It */}
+                  {activeTenant.referralProgram?.enabled && (
+                    <div className="bg-purple-950/25 border border-purple-500/30 rounded-2xl p-3.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-purple-300 text-xs flex items-center gap-1.5">
+                          <span>🎁 Referred by Member Code (Optional)</span>
+                        </label>
+                        <span className="text-[10px] text-purple-300 font-extrabold bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30">
+                          ₦{activeTenant.referralProgram.friendDiscountNaira.toLocaleString()} Off
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={newReferralCode}
+                        onChange={(e) => setNewReferralCode(e.target.value)}
+                        placeholder="e.g. 124253 or Sponsor Phone"
+                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-xl p-2 text-white font-mono text-xs focus:outline-none uppercase"
+                      />
+                      {newReferralCode.trim() && (
+                        (() => {
+                          const clean = newReferralCode.trim().replace(/^#/, '');
+                          const matched = members.find(
+                            (m) =>
+                              m.tenantId === activeTenant.id &&
+                              (m.memberCode.toLowerCase() === clean.toLowerCase() ||
+                               m.phoneNumber.replace(/\s+/g, '') === clean.replace(/\s+/g, ''))
+                          );
+                          if (matched) {
+                            return (
+                              <p className="text-[11px] text-emerald-400 font-semibold bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/30">
+                                ✓ Verified Sponsor: <strong>{matched.fullName}</strong> will receive +{activeTenant.referralProgram?.rewardDays || 5} free days, and this member saves ₦{activeTenant.referralProgram?.friendDiscountNaira.toLocaleString()}!
+                              </p>
+                            );
+                          }
+                          return (
+                            <p className="text-[11px] text-amber-400 font-medium">
+                              ⚠ Code not found in gym roster. Member will be registered at standard price.
+                            </p>
+                          );
+                        })()
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Payment Method</label>

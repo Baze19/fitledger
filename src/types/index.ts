@@ -28,6 +28,9 @@ export interface Member {
   totalVisitsThisMonth: number;
   visitDates: string[]; // ISO date strings (e.g. '2026-10-06')
   ptSessionDates: string[]; // ISO date strings
+  referralCount?: number;
+  referralDaysEarned?: number;
+  referredByCode?: string;
 }
 
 export type CheckInMethod = 'qr_scan' | 'phone_lookup' | 'manual_override' | 'self_qr_scan';
@@ -85,6 +88,14 @@ export interface StaffUser {
   shiftStatus: 'on_duty' | 'off_duty';
 }
 
+export interface ReferralProgramSettings {
+  enabled: boolean;
+  rewardDays: number; // Free days given to referring member
+  friendDiscountNaira: number; // Naira discount off friend's first plan
+  headline: string; // e.g. "Give ₦2,000 Off, Get 5 Free Days! 🔥"
+  termsDescription?: string; // Optional terms or instructions
+}
+
 export interface GymTenant {
   id: string;
   name: string;
@@ -97,6 +108,7 @@ export interface GymTenant {
   membersCount: number;
   status: 'active' | 'trial' | 'suspended';
   joinedDate: string;
+  referralProgram?: ReferralProgramSettings;
 }
 
 export interface ShiftSummary {

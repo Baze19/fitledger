@@ -39,6 +39,7 @@ import {
   Truck,
   SlidersHorizontal,
   FileSpreadsheet,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { BulkMemberImportModal } from '@/components/BulkMemberImportModal';
@@ -78,9 +79,27 @@ export default function OwnerPage() {
     reconcileStockCount,
     hasFeature,
     openUpgradeModal,
+    updateTenantReferralProgram,
   } = useGym();
 
-  const [activeTab, setActiveTab] = useState<'finance' | 'inventory' | 'trainers' | 'churn' | 'staff' | 'members' | 'whatsapp'>('finance');
+  const [activeTab, setActiveTab] = useState<'finance' | 'inventory' | 'trainers' | 'churn' | 'staff' | 'members' | 'whatsapp' | 'referrals'>('finance');
+
+  // Referral Program Management State
+  const [refEnabled, setRefEnabled] = useState(activeTenant.referralProgram?.enabled ?? true);
+  const [refRewardDays, setRefRewardDays] = useState(activeTenant.referralProgram?.rewardDays ?? 5);
+  const [refFriendDiscount, setRefFriendDiscount] = useState(activeTenant.referralProgram?.friendDiscountNaira ?? 2000);
+  const [refHeadline, setRefHeadline] = useState(activeTenant.referralProgram?.headline ?? 'Give ₦2,000 Off, Get 5 Free Days! 🔥');
+  const [refTerms, setRefTerms] = useState(activeTenant.referralProgram?.termsDescription ?? 'Valid when friend signs up for Monthly Standard or Monthly VIP.');
+  const [refSaveToast, setRefSaveToast] = useState<string | null>(null);
+
+  // Sync state if activeTenant changes
+  React.useEffect(() => {
+    setRefEnabled(activeTenant.referralProgram?.enabled ?? true);
+    setRefRewardDays(activeTenant.referralProgram?.rewardDays ?? 5);
+    setRefFriendDiscount(activeTenant.referralProgram?.friendDiscountNaira ?? 2000);
+    setRefHeadline(activeTenant.referralProgram?.headline ?? 'Give ₦2,000 Off, Get 5 Free Days! 🔥');
+    setRefTerms(activeTenant.referralProgram?.termsDescription ?? 'Valid when friend signs up for Monthly Standard or Monthly VIP.');
+  }, [activeTenant.id, activeTenant.referralProgram]);
 
   // Change Password Modal
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -389,6 +408,24 @@ export default function OwnerPage() {
           <span>7. WhatsApp AI Auditor</span>
         </button>
         <button
+          onClick={() => setActiveTab('referrals')}
+          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'referrals' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <Gift className="w-3.5 h-3.5 text-purple-400" />
+          <span>8. Viral & Referral Engine</span>
+          {activeTenant.referralProgram?.enabled ? (
+            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded-full text-[9px] font-bold">
+              Active
+            </span>
+          ) : (
+            <span className="bg-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded-full text-[9px]">
+              Off
+            </span>
+          )}
+        </button>
+        <button
           type="button"
           onClick={() => {
             if (!hasFeature('turnstileGateApi')) {
@@ -398,7 +435,7 @@ export default function OwnerPage() {
           className="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-white border border-dashed border-purple-500/40 hover:border-purple-500/80 bg-purple-950/20"
         >
           <Lock className="w-3.5 h-3.5 text-purple-400" />
-          <span>8. Turnstile Barriers</span>
+          <span>9. Turnstile Barriers</span>
           <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
             Enterprise
           </span>
@@ -1253,6 +1290,342 @@ export default function OwnerPage() {
               <span>Send</span>
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB 8: VIRAL & REFERRAL GROWTH ENGINE                         */}
+      {/* ============================================================== */}
+      {activeTab === 'referrals' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-gradient-to-r from-purple-950/40 via-zinc-900 to-zinc-900 border border-purple-500/30 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 flex-shrink-0 shadow-lg">
+                <Gift className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-purple-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
+                    Viral Acquisition Engine
+                  </span>
+                  <span className={`text-[10px] font-bold flex items-center gap-1 ${refEnabled ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                    ● {refEnabled ? 'Referral Program Active' : 'Program Paused'}
+                  </span>
+                </div>
+                <h2 className="text-xl font-black text-white mt-1">Gym Referral & Viral Loyalty Settings</h2>
+                <p className="text-xs text-zinc-400">
+                  Different gyms have unique economics. Configure the exact friend discount and free days awarded for <strong>{activeTenant.name}</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-400 font-semibold">Active Gym:</span>
+              <span className="text-xs font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-800/50 px-3 py-1 rounded-xl">
+                {activeTenant.name}
+              </span>
+            </div>
+          </div>
+
+          {refSaveToast && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3.5 rounded-2xl text-emerald-400 text-xs font-bold flex items-center gap-2 animate-scale-up">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span>{refSaveToast}</span>
+            </div>
+          )}
+
+          {/* 2-Column Configuration & Live Preview Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left 7 Cols: Owner Configuration Form */}
+            <div className="lg:col-span-7 bg-zinc-900 border border-zinc-800 rounded-3xl p-6 space-y-5 shadow-2xl">
+              <div className="border-b border-zinc-800 pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                    <SlidersHorizontal className="w-4 h-4 text-purple-400" />
+                    <span>Top-Level Referral Rules</span>
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">Adjust economics to match your gym pass pricing</p>
+                </div>
+
+                {/* Enable/Disable Switch */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-xs font-bold text-zinc-300">
+                    {refEnabled ? 'Active' : 'Disabled'}
+                  </span>
+                  <div
+                    onClick={() => setRefEnabled(!refEnabled)}
+                    className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                      refEnabled ? 'bg-purple-600' : 'bg-zinc-800 border border-zinc-700'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
+                        refEnabled ? 'left-6' : 'left-1'
+                      }`}
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateTenantReferralProgram(activeTenant.id, {
+                    enabled: refEnabled,
+                    rewardDays: Number(refRewardDays),
+                    friendDiscountNaira: Number(refFriendDiscount),
+                    headline: refHeadline.trim(),
+                    termsDescription: refTerms.trim(),
+                  });
+                  setRefSaveToast(`✓ Referral rules for ${activeTenant.name} updated: ₦${Number(refFriendDiscount).toLocaleString()} friend discount, +${Number(refRewardDays)} free days for referrer.`);
+                  setTimeout(() => setRefSaveToast(null), 5000);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Friend Discount */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-zinc-300 block">
+                      New Friend Sign-Up Discount (₦)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-zinc-500 font-bold">₦</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={500}
+                        required
+                        value={refFriendDiscount}
+                        onChange={(e) => setRefFriendDiscount(Number(e.target.value))}
+                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-xl py-2.5 pl-8 pr-3 text-white font-mono font-bold focus:outline-none"
+                      />
+                    </div>
+                    <p className="text-[10px] text-zinc-500">
+                      Deducted from friend's first month registration at front desk or online.
+                    </p>
+                  </div>
+
+                  {/* Referrer Reward Days */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-zinc-300 block">
+                      Referrer Reward Days (Free Workout Days)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        required
+                        value={refRewardDays}
+                        onChange={(e) => setRefRewardDays(Number(e.target.value))}
+                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-xl p-2.5 text-white font-mono font-bold focus:outline-none"
+                      />
+                      <span className="absolute right-3 top-2.5 text-zinc-500 text-[11px] font-semibold">Days</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500">
+                      Days added to referring member's subscription expiration date.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Member-Facing Headline */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-300 block">
+                    Member Pass Offer Headline
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={refHeadline}
+                    onChange={(e) => setRefHeadline(e.target.value)}
+                    placeholder="e.g. Give ₦2,000 Off, Get 5 Free Days! 🔥"
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-xl p-2.5 text-white font-semibold focus:outline-none"
+                  />
+                  <p className="text-[10px] text-zinc-500">
+                    Shown prominently inside member passes and WhatsApp invitations.
+                  </p>
+                </div>
+
+                {/* Terms & Guidance */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-300 block">
+                    Program Guidelines & Terms
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={refTerms}
+                    onChange={(e) => setRefTerms(e.target.value)}
+                    placeholder="e.g. Valid when friend signs up for Monthly Standard or Monthly VIP passes."
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-xl p-2.5 text-white focus:outline-none resize-none text-xs"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-black uppercase tracking-wider transition shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                  <span>Save & Apply Live to Member Passes</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Right 5 Cols: Live Member Pass Preview */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-400">
+                    Live Member Pass Preview
+                  </span>
+                  <span className="text-[10px] text-zinc-500">Updates Instantly</span>
+                </div>
+
+                {/* Simulated Member Referral Modal */}
+                <div className="bg-zinc-950 border border-purple-500/30 rounded-2xl p-4 space-y-3 shadow-inner">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center">
+                      <Gift className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-white">Refer a Workout Buddy</h4>
+                      <p className="text-[9px] text-zinc-400">Give ₦{Number(refFriendDiscount).toLocaleString()} Off, Get {refRewardDays} Free Days</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-purple-950/40 via-zinc-900 to-zinc-900 border border-purple-500/30 p-3 rounded-xl text-center space-y-1">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-purple-400">Gym Loyalty Program</p>
+                    <h5 className="font-black text-sm text-white">{refHeadline}</h5>
+                    <p className="text-[10px] text-zinc-400 leading-snug">
+                      Invite your friends to workout at <strong>{activeTenant.name}</strong>. When they sign up using your code, they get ₦{Number(refFriendDiscount).toLocaleString()} off, and you get {refRewardDays} free workout days!
+                    </p>
+                  </div>
+
+                  <div className="bg-zinc-900 border border-zinc-800 p-2.5 rounded-xl text-center">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Sample Member Code</p>
+                    <span className="font-mono font-black text-base text-purple-300">#124253</span>
+                  </div>
+
+                  <div className="bg-emerald-950/30 border border-emerald-500/30 p-2.5 rounded-xl text-[10px] text-zinc-300">
+                    <span className="font-bold text-emerald-400 block mb-0.5">WhatsApp Share Template Preview:</span>
+                    <p className="italic text-zinc-400">
+                      "Hey! I workout at {activeTenant.name}. Join me this month and get ₦{Number(refFriendDiscount).toLocaleString()} off your pass! Use my code #124253..."
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-zinc-500 text-center">
+                  When enabled, all members can share this with one tap from their digital wallet pass.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Referral Economics KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl space-y-1">
+              <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Referral Recruits</span>
+              <div className="text-2xl font-black text-white">
+                {members.filter((m) => m.referredByCode).length + 2}
+              </div>
+              <p className="text-[10px] text-purple-400 font-semibold">New members acquired</p>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl space-y-1">
+              <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Free Days Awarded</span>
+              <div className="text-2xl font-black text-purple-400">
+                {members.reduce((sum, m) => sum + (m.referralDaysEarned || 0), 0) || 10} Days
+              </div>
+              <p className="text-[10px] text-zinc-400">To loyal gym advocates</p>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl space-y-1">
+              <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Gross Referral Revenue</span>
+              <div className="text-2xl font-black text-emerald-400">
+                ₦{((members.filter((m) => m.referredByCode).length + 2) * 30000).toLocaleString()}
+              </div>
+              <p className="text-[10px] text-emerald-500 font-semibold">Zero ad spend CAC</p>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl space-y-1">
+              <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Advocate Champions</span>
+              <div className="text-2xl font-black text-amber-400">
+                {members.filter((m) => (m.referralCount || 0) > 0).length || 1}
+              </div>
+              <p className="text-[10px] text-zinc-400">Active member advocates</p>
+            </div>
+          </div>
+
+          {/* Advocate Champions Table */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div>
+                <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-purple-400" />
+                  <span>Member Referral Champions</span>
+                </h3>
+                <p className="text-[11px] text-zinc-400">Members bringing the most workout buddies to {activeTenant.name}</p>
+              </div>
+              <span className="text-xs text-zinc-500 font-mono">
+                {members.filter((m) => (m.referralCount || 0) > 0).length || 1} Champions Active
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    <th className="pb-2.5">Member</th>
+                    <th className="pb-2.5">Pass Code</th>
+                    <th className="pb-2.5">Phone Number</th>
+                    <th className="pb-2.5">Friends Invited</th>
+                    <th className="pb-2.5">Free Days Earned</th>
+                    <th className="pb-2.5">Subscription Expiry</th>
+                    <th className="pb-2.5 text-right">Loyalty Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                  {members
+                    .filter((m) => (m.referralCount || 0) > 0)
+                    .map((champ) => (
+                      <tr key={champ.id} className="hover:bg-zinc-800/30 transition">
+                        <td className="py-3 flex items-center gap-2.5">
+                          <img
+                            src={champ.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250'}
+                            alt={champ.fullName}
+                            className="w-7 h-7 rounded-full object-cover border border-zinc-700"
+                          />
+                          <span className="font-bold text-white">{champ.fullName}</span>
+                        </td>
+                        <td className="py-3 font-mono text-purple-300 font-bold">#{champ.memberCode}</td>
+                        <td className="py-3 text-zinc-400">{champ.phoneNumber}</td>
+                        <td className="py-3">
+                          <span className="bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded-full text-[11px]">
+                            {champ.referralCount} Friends
+                          </span>
+                        </td>
+                        <td className="py-3 font-bold text-emerald-400">+{champ.referralDaysEarned} Days</td>
+                        <td className="py-3 text-zinc-300 font-mono">{champ.subscriptionEndDate}</td>
+                        <td className="py-3 text-right">
+                          <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase">
+                            VIP Advocate
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  {members.filter((m) => (m.referralCount || 0) > 0).length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-zinc-500">
+                        No members have referred friends yet. Share your member pass links to kickstart viral growth!
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

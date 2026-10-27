@@ -19,6 +19,7 @@ interface GymContextType {
   activeTenant: GymTenant;
   switchTenant: (tenantId: string) => void;
   addTenant: (data: Omit<GymTenant, 'id' | 'joinedDate'>) => GymTenant;
+  updateTenantReferralProgram: (tenantId: string, settings: GymTenant['referralProgram']) => void;
 
   owners: OwnerAccount[];
   activeOwner: OwnerAccount | null;
@@ -61,7 +62,7 @@ interface GymContextType {
   setScanResultIdle: () => void;
   checkInMember: (query: string, method?: 'qr_scan' | 'phone_lookup') => { success: boolean; member?: Member; reason?: string };
   recordSelfCheckIn: (memberIdOrCode: string) => { success: boolean; message: string };
-  registerMember: (data: { fullName: string; phoneNumber: string; planId: string; paymentMethod: Transaction['paymentMethod']; photoUrl?: string }) => Member;
+  registerMember: (data: { fullName: string; phoneNumber: string; planId: string; paymentMethod: Transaction['paymentMethod']; photoUrl?: string; referralCode?: string }) => Member;
   updateMemberPhoto: (memberIdOrCode: string, photoUrl: string) => void;
   bulkImportMembers: (items: { fullName: string; phoneNumber: string; status: 'active' | 'expired'; currentPlanId: string; subscriptionEndDate: string; remainingPtSessions: number }[]) => { count: number; importedCodes: string[] };
   renewMember: (memberId: string, planId: string, paymentMethod: Transaction['paymentMethod']) => void;
@@ -1029,6 +1030,28 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     return { success: true, member: found };
   };
 
+  // Update Tenant Referral Settings
+  const updateTenantReferralProgram = (tenantId: string, settings: GymTenant['referralProgram']) => {
+    setTenants((prev) =>
+      prev.map((t) => (t.id === tenantId ? { ...t, referralProgram: settings } : t))
+    );
+    if (activeTenant.id === tenantId) {
+      setActiveTenant((prev) => ({ ...prev, referralProgram: settings }));
+    }
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
+      action: 'Referral Program Settings Updated',
+      details: settings?.enabled
+        ? `Referral program active: Friend Discount: ₦${settings.friendDiscountNaira?.toLocaleString() || 0}, Referrer Bonus: ${settings.rewardDays || 0} days.`
+        : `Referral program paused by gym management.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
   // Register Member
   const registerMember = (data: {
     fullName: string;
@@ -1036,6 +1059,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     planId: string;
     paymentMethod: Transaction['paymentMethod'];
     photoUrl?: string;
+    referralCode?: string;
   }) => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || plans[1];
     const isDayPass = selectedPlan.id === 'plan_daily' || selectedPlan.durationDays === 1;
@@ -1049,6 +1073,58 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       const expDate = new Date(now.getTime() + (selectedPlan.durationDays || 30) * 24 * 60 * 60 * 1000);
       endDateStr = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, '0')}-${String(expDate.getDate()).padStart(2, '0')}`;
     }
+
+    // Process Referral Program if provided
+    const cleanRefCode = data.referralCode?.trim().replace(/^#/, '');
+    let referrerMember: Member | undefined;
+    let friendDiscount = 0;
+    let referrerBonusDays = 0;
+
+    if (cleanRefCode && activeTenant.referralProgram?.enabled && !isDayPass) {
+      referrerMember = members.find(
+        (m) =>
+          m.tenantId === activeTenant.id &&
+          (m.memberCode.toLowerCase() === cleanRefCode.toLowerCase() ||
+           m.phoneNumber.replace(/\s+/g, '') === cleanRefCode.replace(/\s+/g, ''))
+      );
+
+      if (referrerMember) {
+        friendDiscount = activeTenant.referralProgram.friendDiscountNaira || 0;
+        referrerBonusDays = activeTenant.referralProgram.rewardDays || 5;
+
+        // Reward the referring member with extra free subscription days
+        const currentRefEnd = new Date(referrerMember.subscriptionEndDate || todayStr);
+        const newRefEnd = new Date(currentRefEnd.getTime() + referrerBonusDays * 24 * 60 * 60 * 1000);
+        const newRefEndStr = `${newRefEnd.getFullYear()}-${String(newRefEnd.getMonth() + 1).padStart(2, '0')}-${String(newRefEnd.getDate()).padStart(2, '0')}`;
+
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.id === referrerMember!.id
+              ? {
+                  ...m,
+                  subscriptionEndDate: newRefEndStr,
+                  referralCount: (m.referralCount || 0) + 1,
+                  referralDaysEarned: (m.referralDaysEarned || 0) + referrerBonusDays,
+                }
+              : m
+          )
+        );
+
+        // Audit log for viral referral reward
+        const refAudit: AuditLog = {
+          id: `aud_ref_${Date.now()}`,
+          tenantId: activeTenant.id,
+          timestamp: 'Just now',
+          actorStaffName: activeStaff.fullName,
+          action: 'Referral Bonus Awarded',
+          details: `Viral Referral: ${referrerMember.fullName} (#${referrerMember.memberCode}) earned +${referrerBonusDays} free days (new expiry: ${newRefEndStr}) for inviting ${data.fullName}. Friend received ₦${friendDiscount.toLocaleString()} discount.`,
+          severity: 'info',
+        };
+        setAuditLogs((prev) => [refAudit, ...prev]);
+      }
+    }
+
+    const finalAmount = Math.max(0, selectedPlan.price - friendDiscount);
 
     const newCode = isDayPass
       ? `DAY-${Math.floor(1000 + Math.random() * 9000)}`
@@ -1073,6 +1149,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       totalVisitsThisMonth: 1,
       visitDates: [todayStr],
       ptSessionDates: [],
+      referralCount: 0,
+      referralDaysEarned: 0,
+      referredByCode: referrerMember ? referrerMember.memberCode : undefined,
     };
 
     setMembers((prev) => [newMember, ...prev]);
@@ -1083,11 +1162,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       memberId: newMember.id,
       memberName: newMember.fullName,
       memberCode: newMember.memberCode,
-      amount: selectedPlan.price,
+      amount: finalAmount,
       paymentMethod: data.paymentMethod,
       reference: `REC-${Date.now().toString().slice(-6)}`,
       timestamp: 'Just now',
-      planName: selectedPlan.name,
+      planName: friendDiscount > 0 ? `${selectedPlan.name} (₦${friendDiscount.toLocaleString()} Referral Discount)` : selectedPlan.name,
       receivedByStaffName: activeStaff.fullName,
       status: 'verified',
     };
@@ -1101,7 +1180,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       action: isDayPass ? '1-Day Walk-In Pass Issued' : 'New Member Registered',
       details: isDayPass
         ? `Issued 1-Day Guest Pass ${newMember.memberCode} to ${newMember.fullName} (₦${selectedPlan.price.toLocaleString()}). Channel: ${data.paymentMethod}. Expires at midnight.`
-        : `Registered ${newMember.fullName} (#${newMember.memberCode}) on ${selectedPlan.name} (₦${selectedPlan.price.toLocaleString()}). Channel: ${data.paymentMethod}.`,
+        : `Registered ${newMember.fullName} (#${newMember.memberCode}) on ${selectedPlan.name} (₦${finalAmount.toLocaleString()}${friendDiscount > 0 ? ` after ₦${friendDiscount.toLocaleString()} referral discount from #${referrerMember?.memberCode}` : ''}). Channel: ${data.paymentMethod}.`,
       severity: 'info',
     };
     setAuditLogs((prev) => [audit, ...prev]);
@@ -1571,6 +1650,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         activeTenant,
         switchTenant,
         addTenant,
+        updateTenantReferralProgram,
         owners,
         activeOwner,
         isFounderImpersonating,

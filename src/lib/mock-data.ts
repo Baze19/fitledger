@@ -13,6 +13,13 @@ export const INITIAL_TENANTS: GymTenant[] = [
     membersCount: 240,
     status: 'active',
     joinedDate: '2026-08-01',
+    referralProgram: {
+      enabled: true,
+      rewardDays: 5,
+      friendDiscountNaira: 2000,
+      headline: 'Give ₦2,000 Off, Get 5 Free Days! 🔥',
+      termsDescription: 'Valid when friend registers for Monthly Standard or Monthly VIP.',
+    },
   },
   {
     id: 'tenant_lekki',
@@ -26,6 +33,13 @@ export const INITIAL_TENANTS: GymTenant[] = [
     membersCount: 580,
     status: 'active',
     joinedDate: '2026-07-15',
+    referralProgram: {
+      enabled: true,
+      rewardDays: 10,
+      friendDiscountNaira: 5000,
+      headline: 'VIP Referral: ₦5,000 Off + 10 Free Workout Days! 💎',
+      termsDescription: 'Valid for all Lekki Phase 1 VIP and Enterprise passes.',
+    },
   },
   {
     id: 'tenant_surulere',
@@ -39,6 +53,13 @@ export const INITIAL_TENANTS: GymTenant[] = [
     membersCount: 135,
     status: 'trial',
     joinedDate: '2026-10-18', // 14-day trial!
+    referralProgram: {
+      enabled: true,
+      rewardDays: 3,
+      friendDiscountNaira: 1000,
+      headline: 'Community Hustle: ₦1,000 Off + 3 Free Days 💪',
+      termsDescription: 'Bring your training partner and stack free workout days.',
+    },
   },
   {
     id: 'tenant_ikeja',
@@ -52,6 +73,13 @@ export const INITIAL_TENANTS: GymTenant[] = [
     membersCount: 310,
     status: 'active',
     joinedDate: '2026-09-05',
+    referralProgram: {
+      enabled: false,
+      rewardDays: 7,
+      friendDiscountNaira: 3000,
+      headline: 'Apex Athletic Invite: ₦3,000 Off + 7 Free Days',
+      termsDescription: 'Referral program currently paused by gym management.',
+    },
   },
 ];
 
@@ -148,6 +176,8 @@ export const INITIAL_MEMBERS: Member[] = [
     ptSessionDates: [
       '2026-10-10', '2026-10-17', '2026-10-21'
     ],
+    referralCount: 2,
+    referralDaysEarned: 10,
   },
   {
     id: 'mem_emeka',

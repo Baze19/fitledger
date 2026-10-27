@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import QRCode from 'qrcode';
+import jsQR from 'jsqr';
 import { useGym } from '@/context/gym-context';
 import { CameraCaptureModal } from '@/components/CameraCaptureModal';
 import { 
@@ -48,17 +49,57 @@ export function MemberPwaView() {
     }
   }, [member?.memberCode]);
 
-  // Turn on device camera when member opens counter scanner viewfinder
+  const hasScannedRef = useRef<boolean>(false);
+
+  // Turn on device camera and run real-time QR decoder loop
   useEffect(() => {
+    let animId: number;
+    let canvas: HTMLCanvasElement | null = null;
+    let ctx: CanvasRenderingContext2D | null = null;
+
     if (showScanModal && scanTab === 'self_checkin') {
+      hasScannedRef.current = false;
       navigator.mediaDevices
         ?.getUserMedia({ video: { facingMode: 'environment' } })
         .then((stream) => {
           streamRef.current = stream;
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
+            videoRef.current.setAttribute('playsinline', 'true');
             videoRef.current.play();
             setCameraActive(true);
+
+            // Create canvas for extracting video frames to feed jsQR
+            canvas = document.createElement('canvas');
+            ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            const scanFrame = () => {
+              if (
+                !hasScannedRef.current &&
+                videoRef.current &&
+                videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA
+              ) {
+                if (canvas && ctx) {
+                  canvas.width = videoRef.current.videoWidth;
+                  canvas.height = videoRef.current.videoHeight;
+                  ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                  const qrResult = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert',
+                  });
+
+                  if (qrResult && qrResult.data) {
+                    hasScannedRef.current = true;
+                    handleSelfCheckInTrigger();
+                    return;
+                  }
+                }
+              }
+              if (!hasScannedRef.current) {
+                animId = requestAnimationFrame(scanFrame);
+              }
+            };
+            animId = requestAnimationFrame(scanFrame);
           }
         })
         .catch(() => {
@@ -73,6 +114,7 @@ export function MemberPwaView() {
     }
 
     return () => {
+      cancelAnimationFrame(animId);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -548,80 +590,110 @@ export function MemberPwaView() {
       )}
 
       {/* ----------------- MODAL 2: REFER A WORKOUT BUDDY ----------------- */}
-      {showReferModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 max-w-sm w-full text-white space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center">
-                  <Gift className="w-4 h-4" />
+      {showReferModal && (() => {
+        const refProg = activeTenant.referralProgram;
+        const isEnabled = refProg?.enabled ?? true;
+        const friendDiscount = refProg?.friendDiscountNaira ?? 2000;
+        const rewardDays = refProg?.rewardDays ?? 5;
+        const headlineText = refProg?.headline || `Give ₦${friendDiscount.toLocaleString()} Off, Get ${rewardDays} Free Days! 🔥`;
+        const termsText = refProg?.termsDescription || `Valid when friend signs up for a monthly or quarterly VIP pass.`;
+
+        const dynamicWhatsappText = `*Hey! I workout at ${activeTenant.name} (${activeTenant.location})* 🏋️‍♂️💪\n\nJoin me this month and get *₦${friendDiscount.toLocaleString()} off* your VIP membership pass!\n\nUse my referral code *#${member.memberCode}* or view my gym pass here:\n👉 https://fitledger-v1.vercel.app/m/${member.memberCode}\n\nLet's get fit together!`;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 max-w-sm w-full text-white space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center">
+                    <Gift className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm">Refer a Workout Buddy</h3>
+                    <p className="text-[10px] text-zinc-400">
+                      {isEnabled ? `Give ₦${friendDiscount.toLocaleString()}, Get ${rewardDays} Free Days` : 'Loyalty Program'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-black text-sm">Refer a Workout Buddy</h3>
-                  <p className="text-[10px] text-zinc-400">Give ₦2,000, Get 5 Free Days</p>
+                <button
+                  onClick={() => setShowReferModal(false)}
+                  className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {!isEnabled ? (
+                <div className="text-center py-6 space-y-2 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+                  <Gift className="w-8 h-8 text-zinc-600 mx-auto" />
+                  <h4 className="font-bold text-sm text-zinc-300">Program Currently Paused</h4>
+                  <p className="text-xs text-zinc-500 leading-relaxed">
+                    Referral rewards are temporarily disabled by <strong>{activeTenant.name}</strong> management. Check back soon!
+                  </p>
                 </div>
-              </div>
-              <button
-                onClick={() => setShowReferModal(false)}
-                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              ) : (
+                <>
+                  <div className="bg-gradient-to-br from-purple-950/40 via-zinc-900 to-zinc-900 border border-purple-500/30 p-4 rounded-2xl text-center space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Gym Loyalty Program</p>
+                    <h4 className="font-black text-base text-white">{headlineText}</h4>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Invite your friends to workout at <strong>{activeTenant.name}</strong>. When they sign up using your code, they get ₦{friendDiscount.toLocaleString()} off, and you get {rewardDays} free workout days added to your subscription!
+                    </p>
+                    {termsText && (
+                      <p className="text-[10px] text-zinc-500 italic pt-0.5">
+                        *{termsText}
+                      </p>
+                    )}
+                  </div>
 
-            <div className="bg-gradient-to-br from-purple-950/40 via-zinc-900 to-zinc-900 border border-purple-500/30 p-4 rounded-2xl text-center space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Gym Loyalty Program</p>
-              <h4 className="font-black text-base text-white">Give ₦2,000 Off, Get 5 Free Days! 🔥</h4>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Invite your friends to workout at <strong>{activeTenant.name}</strong>. When they sign up using your code, they get ₦2,000 off, and you get 5 free workout days!
-              </p>
-            </div>
+                  <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-2xl space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 text-center">Your Unique Referral Code</p>
+                    <div className="bg-black border border-purple-500/50 p-2.5 rounded-xl text-center">
+                      <span className="font-mono font-black text-xl text-purple-300 tracking-wider">#{member.memberCode}</span>
+                    </div>
+                  </div>
 
-            <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-2xl space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 text-center">Your Unique Referral Code</p>
-              <div className="bg-black border border-purple-500/50 p-2.5 rounded-xl text-center">
-                <span className="font-mono font-black text-xl text-purple-300 tracking-wider">#{member.memberCode}</span>
-              </div>
-            </div>
+                  <div className="space-y-2">
+                    <a
+                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(dynamicWhatsappText)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      📱 Share via WhatsApp
+                    </a>
 
-            <div className="space-y-2">
-              <a
-                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                  `*Hey! I workout at ${activeTenant.name} (${activeTenant.location})* 🏋️‍♂️💪\n\nJoin me this month and get *₦2,000 off* your VIP membership pass!\n\nUse my referral code *#${member.memberCode}* or view my gym pass here:\n👉 https://fitledger-v1.vercel.app/m/${member.memberCode}\n\nLet's get fit together!`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Share2 className="w-4 h-4" />
-                📱 Share via WhatsApp
-              </a>
+                    <button
+                      onClick={handleCopyReferral}
+                      className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {referCopied ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span className="text-emerald-400 font-bold">✓ Copied to Clipboard!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 text-zinc-400" />
+                          <span>Copy Referral Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
 
-              <button
-                onClick={handleCopyReferral}
-                className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {referCopied ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span className="text-emerald-400 font-bold">✓ Copied to Clipboard!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 text-zinc-400" />
-                    <span>Copy Referral Link</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
-              <span>Your Referral Stats:</span>
-              <span className="font-bold text-white">0 Friends • 0 Days Earned</span>
+                  <div className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+                    <span>Your Referral Stats:</span>
+                    <span className="font-bold text-white">
+                      {member.referralCount || 0} Friends • {member.referralDaysEarned || 0} Days Earned
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ----------------- MODAL 3: PT BOOKING ----------------- */}
       {showPtModal && (
