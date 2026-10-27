@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { 
   QrCode, Calendar, Dumbbell, Users, CreditCard, CheckCircle2, 
   Sparkles, ArrowLeft, Zap, Camera, Share2, Copy, Check, 
-  Maximize2, ScanLine, Gift, X, AlertCircle
+  Maximize2, ScanLine, Gift, X, AlertCircle, Clock
 } from 'lucide-react';
 import { initializePaystackPayment } from '@/lib/paystack';
 import { CameraCaptureModal } from '@/components/CameraCaptureModal';
@@ -126,7 +126,14 @@ function MemberPassContent() {
     .slice(0, 2)
     .toUpperCase();
 
-  const memberBarcodeTag = `${member.memberCode}-${member.fullName.replace(/[^a-zA-Z]/g, '').slice(0, 8).toUpperCase()}-VIP`;
+  const isDayPass = member.currentPlanId === 'plan_daily' || member.memberCode.startsWith('DAY-');
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isExpired = todayStr > member.subscriptionEndDate || new Date(member.subscriptionEndDate) < new Date(todayStr);
+
+  const memberBarcodeTag = isDayPass
+    ? `${member.memberCode}-${member.fullName.replace(/[^a-zA-Z]/g, '').slice(0, 8).toUpperCase()}-DAYPASS`
+    : `${member.memberCode}-${member.fullName.replace(/[^a-zA-Z]/g, '').slice(0, 8).toUpperCase()}-VIP`;
 
   return (
     <div className="min-h-screen bg-black text-white flex justify-center font-sans">
@@ -152,19 +159,21 @@ function MemberPassContent() {
             <span className="font-semibold text-emerald-400">4G 46%</span>
           </div>
 
-          {/* Red Club Header */}
-          <div className="bg-red-600 px-4 py-3 flex items-center justify-between text-white shadow-lg">
+          {/* Club Header */}
+          <div className={`${isDayPass ? 'bg-amber-600' : 'bg-red-600'} px-4 py-3 flex items-center justify-between text-white shadow-lg transition-colors`}>
             <div className="flex items-center gap-2.5">
-              <Link href="/" className="p-1 hover:bg-red-700 rounded-lg">
+              <Link href="/" className="p-1 hover:bg-black/20 rounded-lg">
                 <ArrowLeft className="w-5 h-5 text-white" />
               </Link>
               <div>
                 <h1 className="font-extrabold text-sm tracking-tight leading-tight">{activeTenant.name}</h1>
-                <p className="text-[10px] text-red-100">{activeTenant.location}</p>
+                <p className="text-[10px] text-white/80">{activeTenant.location}</p>
               </div>
             </div>
-            <span className="text-[10px] bg-red-800/80 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-              VIP PASS
+            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+              isDayPass ? 'bg-black/40 text-amber-200' : 'bg-red-800/80 text-white'
+            }`}>
+              {isDayPass ? '1-DAY PASS' : 'VIP PASS'}
             </span>
           </div>
 
@@ -187,18 +196,18 @@ function MemberPassContent() {
                   className="relative cursor-pointer group flex-shrink-0"
                   title="Tap to snap live selfie or upload photo"
                 >
-                  <div className="w-13 h-13 rounded-full border-2 border-red-500 overflow-hidden bg-zinc-800 flex items-center justify-center relative shadow-md">
+                  <div className={`w-13 h-13 rounded-full border-2 ${isDayPass ? 'border-amber-500' : 'border-red-500'} overflow-hidden bg-zinc-800 flex items-center justify-center relative shadow-md`}>
                     {member.photoUrl ? (
                       <img src={member.photoUrl} alt={member.fullName} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="font-black text-sm text-red-400">{memberInitials}</span>
+                      <span className={`font-black text-sm ${isDayPass ? 'text-amber-400' : 'text-red-400'}`}>{memberInitials}</span>
                     )}
                     {/* Camera overlay icon */}
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-60 group-hover:opacity-100 transition">
                       <Camera className="w-4 h-4 text-white drop-shadow" />
                     </div>
                   </div>
-                  <span className="absolute -bottom-1 -right-1 bg-red-600 text-white rounded-full p-1 shadow">
+                  <span className={`absolute -bottom-1 -right-1 ${isDayPass ? 'bg-amber-500' : 'bg-red-600'} text-white rounded-full p-1 shadow`}>
                     <Camera className="w-2.5 h-2.5" />
                   </span>
                 </div>
@@ -206,15 +215,27 @@ function MemberPassContent() {
                 <div>
                   <h3 className="font-black text-sm text-white leading-tight">{member.fullName}</h3>
                   <p className="text-xs text-zinc-400 font-mono">#{member.memberCode}</p>
-                  <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mt-0.5">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Active until {member.subscriptionEndDate}</span>
+                  <div className={`flex items-center gap-1 text-[10px] font-bold mt-0.5 ${
+                    isExpired ? 'text-red-400' : isDayPass ? 'text-amber-400' : 'text-emerald-400'
+                  }`}>
+                    {isExpired ? <AlertCircle className="w-3 h-3" /> : isDayPass ? <Clock className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                    <span>
+                      {isExpired
+                        ? `Expired on ${member.subscriptionEndDate}`
+                        : isDayPass
+                        ? `Valid Today Only • Expires at 11:59 PM`
+                        : `Active until ${member.subscriptionEndDate}`}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <span className="text-[10px] bg-zinc-800 text-zinc-300 px-2.5 py-1 rounded-xl font-bold border border-zinc-700">
-                Monthly VIP
+              <span className={`text-[10px] px-2.5 py-1 rounded-xl font-bold border ${
+                isDayPass
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                  : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+              }`}>
+                {isDayPass ? '1-Day Walk-In' : 'Monthly VIP'}
               </span>
             </div>
 
@@ -237,6 +258,13 @@ function MemberPassContent() {
                   {memberBarcodeTag}
                 </p>
               </div>
+
+              {isDayPass && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg py-1 px-2 text-[10px] text-amber-300 font-bold uppercase tracking-wider">
+                  ⚠️ Single-Day Guest Pass • Valid Today Until 11:59 PM
+                </div>
+              )}
+
               <p className="text-[11px] text-zinc-400">Hold near scanner or counter to enter</p>
             </div>
 

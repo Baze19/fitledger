@@ -1,4 +1,4 @@
-import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery } from '@/types';
+import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, ExpenseLog } from '@/types';
 
 export const INITIAL_TENANTS: GymTenant[] = [
   {
@@ -604,6 +604,20 @@ export const INITIAL_STOCK_DELIVERIES: StockDelivery[] = [
     supplier: 'Chi Limited Direct Depot, Isolo',
     timestamp: '2026-10-20 02:15 PM',
     receivedByStaffName: 'Mary Okafor',
+  },
+];
+
+export const INITIAL_EXPENSES: ExpenseLog[] = [
+  {
+    id: 'exp_001',
+    tenantId: 'tenant_fitflex',
+    category: 'diesel_generator',
+    amount: 15000,
+    description: '15 Litres Diesel for Mikano Generator (NEPA Cutover)',
+    staffName: 'Mary Okafor',
+    staffPin: '4821',
+    timestamp: '2026-10-27 08:30 AM',
+    paidFromDrawer: true,
   },
 ];
 

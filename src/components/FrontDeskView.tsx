@@ -28,7 +28,11 @@ import {
   X,
   Expand,
   Tablet,
+  Fuel,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react';
+import { ExpenseLogModal } from '@/components/ExpenseLogModal';
 
 interface FrontDeskViewProps {
   onOpenShiftClose?: () => void;
@@ -42,6 +46,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     registerMember,
     renewMember,
     activeStaff,
+    staffList,
     shiftSummary,
     checkIns,
     plans,
@@ -50,10 +55,17 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     sellRetailItem,
     hasFeature,
     openUpgradeModal,
+    expenses,
+    logExpense,
+    isOfflineMode,
+    offlineQueueCount,
+    triggerManualOfflineSync,
   } = useGym();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [overrideModalMember, setOverrideModalMember] = useState<Member | null>(null);
+  const [showExpenseModal, setShowExpenseModal] = useState<boolean>(false);
+  const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
 
   // Right column tab: 'register' | 'proshop'
   const [rightTab, setRightTab] = useState<'register' | 'proshop'>('register');
@@ -304,9 +316,15 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
         {/* Shift Cash Tally */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="bg-zinc-950 border border-zinc-800 px-3.5 py-1.5 rounded-xl">
-            <span className="text-zinc-500 block text-[10px] uppercase font-bold tracking-wider">CASH IN DRAWER</span>
-            <span className="font-black text-amber-400 text-sm">₦{shiftSummary.cashExpected.toLocaleString()}</span>
+            <span className="text-zinc-500 block text-[10px] uppercase font-bold tracking-wider">NET CASH IN DRAWER</span>
+            <span className="font-black text-amber-400 text-sm">₦{(shiftSummary.netCashExpected ?? shiftSummary.cashExpected).toLocaleString()}</span>
           </div>
+          {(shiftSummary.drawerExpenses || 0) > 0 && (
+            <div className="bg-zinc-950 border border-amber-500/30 px-3 py-1.5 rounded-xl">
+              <span className="text-amber-500 block text-[10px] uppercase font-bold tracking-wider">LESS DIESEL / EXPENSES</span>
+              <span className="font-black text-amber-300 text-sm">-₦{(shiftSummary.drawerExpenses || 0).toLocaleString()}</span>
+            </div>
+          )}
           <div className="bg-zinc-950 border border-zinc-800 px-3.5 py-1.5 rounded-xl">
             <span className="text-zinc-500 block text-[10px] uppercase font-bold tracking-wider">POS SLIPS</span>
             <span className="font-black text-purple-400 text-sm">₦{shiftSummary.posExpected.toLocaleString()}</span>
@@ -315,6 +333,16 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
             <span className="text-zinc-500 block text-[10px] uppercase font-bold tracking-wider">TRANSFERS</span>
             <span className="font-black text-blue-400 text-sm">₦{shiftSummary.transferExpected.toLocaleString()}</span>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowExpenseModal(true)}
+            className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            title="Log Diesel Generator Fuel or Petty Cash (Auto-deducted from drawer)"
+          >
+            <Fuel className="w-3.5 h-3.5 text-amber-400" />
+            <span>⛽ Log Diesel / Expense</span>
+          </button>
 
           {onOpenShiftClose && (
             <button
@@ -328,6 +356,38 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
           )}
         </div>
       </div>
+
+      {/* Offline Mode & NEPA Resiliency Alert Banner */}
+      {(isOfflineMode || offlineQueueCount > 0) && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-300 text-xs shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
+              <WifiOff className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-white text-xs">
+                {isOfflineMode ? '⚡ NEPA / Router Cut Mode Active' : 'Offline Queue Ready'}
+              </p>
+              <p className="text-[11px] text-amber-400/90">
+                {offlineQueueCount} check-in / transaction actions queued locally in browser storage. Validations continue uninterrupted!
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={isSyncingOffline}
+            onClick={async () => {
+              setIsSyncingOffline(true);
+              await triggerManualOfflineSync();
+              setIsSyncingOffline(false);
+            }}
+            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingOffline ? 'animate-spin' : ''}`} />
+            <span>{isSyncingOffline ? 'Syncing...' : 'Sync to Cloud Now'}</span>
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -991,6 +1051,17 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
 
         </div>
       )}
+
+      {/* Expense / Generator Diesel Modal */}
+      <ExpenseLogModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        onLogExpense={(data) => {
+          logExpense(data);
+        }}
+        activeStaff={activeStaff}
+        staffList={staffList}
+      />
 
     </div>
   );

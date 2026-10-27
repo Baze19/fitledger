@@ -103,6 +103,8 @@ export interface ShiftSummary {
   staffName: string;
   shiftStartTime: string;
   cashExpected: number;
+  drawerExpenses: number;
+  netCashExpected: number;
   cashCounted?: number;
   posExpected: number;
   transferExpected: number;
@@ -110,6 +112,21 @@ export interface ShiftSummary {
   totalCheckIns: number;
   overridesCount: number;
   isLocked: boolean;
+}
+
+export type ExpenseCategory = 'diesel_generator' | 'gym_cleaning' | 'repairs_maintenance' | 'water_utilities' | 'other';
+
+export interface ExpenseLog {
+  id: string;
+  tenantId: string;
+  category: ExpenseCategory;
+  amount: number;
+  description: string;
+  receiptPhotoUrl?: string;
+  staffName: string;
+  staffPin: string;
+  timestamp: string;
+  paidFromDrawer: boolean;
 }
 
 export interface OwnerAccount {

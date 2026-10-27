@@ -57,7 +57,8 @@ export function ShiftCloseModal({ isOpen, onClose, onLockTerminal }: ShiftCloseM
   if (!isOpen) return null;
 
   const counted = Number(cashCountedInput) || 0;
-  const currentDiscrepancy = counted - shiftSummary.cashExpected;
+  const targetNetExpected = shiftSummary.netCashExpected ?? (shiftSummary.cashExpected - (shiftSummary.drawerExpenses || 0));
+  const currentDiscrepancy = counted - targetNetExpected;
 
   // Real-time breakdown calculations
   const cashTxCount = transactions.filter((t) => t.paymentMethod === 'cash').length;
@@ -123,7 +124,9 @@ export function ShiftCloseModal({ isOpen, onClose, onLockTerminal }: ShiftCloseM
       `• *Total Gross Revenue:* ₦${shiftSummary.totalRevenue.toLocaleString()}`,
       `• *Paystack / Bank Transfers:* ₦${shiftSummary.transferExpected.toLocaleString()} (Direct Bank)`,
       `• *POS Terminal Card Slips:* ₦${shiftSummary.posExpected.toLocaleString()} (${posTxCount} slips)`,
-      `• *Cash Drawer Expected:* ₦${shiftSummary.cashExpected.toLocaleString()} (${cashTxCount} cash receipts)`,
+      `• *Gross Cash Collected:* ₦${shiftSummary.cashExpected.toLocaleString()} (${cashTxCount} receipts)`,
+      (shiftSummary.drawerExpenses || 0) > 0 ? `• *Less Drawer Expenses (Diesel/Petty Cash):* -₦${(shiftSummary.drawerExpenses || 0).toLocaleString()}` : null,
+      `• *Net Cash Expected in Drawer:* ₦${targetNetExpected.toLocaleString()}`,
       ``,
       `💵 *PHYSICAL DRAWER COUNT:*`,
       `• *Counted Cash:* ₦${counted.toLocaleString()}`,
@@ -269,11 +272,13 @@ export function ShiftCloseModal({ isOpen, onClose, onLockTerminal }: ShiftCloseM
                   </div>
 
                   <div className="bg-amber-950/20 p-2.5 rounded-xl border border-amber-500/40">
-                    <span className="text-[10px] text-amber-400 font-bold uppercase block">Cash In Drawer</span>
+                    <span className="text-[10px] text-amber-400 font-bold uppercase block">Net Cash In Drawer</span>
                     <span className="text-sm font-black text-amber-300">
-                      ₦{shiftSummary.cashExpected.toLocaleString()}
+                      ₦{targetNetExpected.toLocaleString()}
                     </span>
-                    <span className="text-[9px] text-amber-400/80 block mt-0.5">Must match count</span>
+                    <span className="text-[9px] text-amber-400/80 block mt-0.5">
+                      {(shiftSummary.drawerExpenses || 0) > 0 ? `Less ₦${(shiftSummary.drawerExpenses || 0).toLocaleString()} diesel` : 'Must match count'}
+                    </span>
                   </div>
                 </div>
 
@@ -303,10 +308,10 @@ export function ShiftCloseModal({ isOpen, onClose, onLockTerminal }: ShiftCloseM
                     </label>
                     <button
                       type="button"
-                      onClick={() => setCashCountedInput(shiftSummary.cashExpected.toString())}
+                      onClick={() => setCashCountedInput(targetNetExpected.toString())}
                       className="text-[10px] text-amber-400 hover:text-amber-300 underline font-semibold cursor-pointer"
                     >
-                      Fill Exact (₦{shiftSummary.cashExpected.toLocaleString()})
+                      Fill Exact (₦{targetNetExpected.toLocaleString()})
                     </button>
                   </div>
                   <div className="relative">

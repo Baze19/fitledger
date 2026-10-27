@@ -1,11 +1,18 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod } from '@/types';
-import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES } from '@/lib/mock-data';
+import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod, ExpenseLog } from '@/types';
+import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES, INITIAL_EXPENSES } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { PlanTier, FeatureKey, canAccessFeature, getMaxMembersAllowed, PLAN_TIERS } from '@/lib/entitlements';
 import { FeatureGateModal } from '@/components/FeatureGateModal';
+import {
+  enqueueOfflineAction,
+  getOfflineQueue,
+  setCachedMembers,
+  getCachedMembers,
+  flushOfflineQueueToCloud,
+} from '@/lib/offline-queue';
 
 interface GymContextType {
   tenants: GymTenant[];
@@ -77,6 +84,15 @@ interface GymContextType {
   reconcileStockCount: (itemId: string, physicalCount: number, notes?: string) => { discrepancy: number; isBalanced: boolean };
   isCloudConnected: boolean;
 
+  // Expenses & Daily Generator Fuel
+  expenses: ExpenseLog[];
+  logExpense: (data: Omit<ExpenseLog, 'id' | 'timestamp'>) => ExpenseLog;
+
+  // Offline Resiliency Engine (NEPA / Router Outage)
+  isOfflineMode: boolean;
+  offlineQueueCount: number;
+  triggerManualOfflineSync: () => Promise<void>;
+
   // Plan Entitlements & Feature Gating
   hasFeature: (featureKey: FeatureKey) => boolean;
   upgradeTenantTier: (tenantId: string, newTier: PlanTier) => Promise<void>;
@@ -106,6 +122,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const [trainerCommissions, setTrainerCommissions] = useState<TrainerCommission[]>(INITIAL_TRAINER_COMMISSIONS);
   const [retailItems, setRetailItems] = useState<RetailItem[]>(INITIAL_RETAIL_ITEMS);
   const [stockDeliveries, setStockDeliveries] = useState<StockDelivery[]>(INITIAL_STOCK_DELIVERIES);
+  const [expenses, setExpenses] = useState<ExpenseLog[]>(INITIAL_EXPENSES);
+
+  // Offline Resiliency State (NEPA Power Cuts & Router Glitches)
+  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
+  const [offlineQueueCount, setOfflineQueueCount] = useState<number>(0);
 
   const [activeScanResult, setActiveScanResult] = useState<{
     member?: Member;
@@ -238,6 +259,125 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     fetchCloudData();
     return () => { isMounted = false; };
   }, [activeTenant.id]);
+
+  // Offline Resiliency Listeners
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const initialQueue = getOfflineQueue();
+    setOfflineQueueCount(initialQueue.length);
+    setIsOfflineMode(!navigator.onLine);
+
+    const handleOnline = () => {
+      setIsOfflineMode(false);
+      triggerManualOfflineSync();
+    };
+
+    const handleOffline = () => {
+      setIsOfflineMode(true);
+    };
+
+    const handleQueueUpdated = (e: any) => {
+      setOfflineQueueCount(e.detail?.count ?? getOfflineQueue().length);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('fitledger_offline_queue_updated', handleQueueUpdated);
+
+    // Initial cache hydrate check
+    const cached = getCachedMembers(activeTenant.id);
+    if (cached && cached.length > members.length) {
+      setMembers(cached);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('fitledger_offline_queue_updated', handleQueueUpdated);
+    };
+  }, [activeTenant.id]);
+
+  // Persist members locally for instantaneous offline lookup during blackouts
+  useEffect(() => {
+    if (members.length > 0 && activeTenant?.id) {
+      setCachedMembers(activeTenant.id, members);
+    }
+  }, [members, activeTenant?.id]);
+
+  const triggerManualOfflineSync = async () => {
+    if (!supabase || !isSupabaseConfigured) return;
+    try {
+      const res = await flushOfflineQueueToCloud(supabase);
+      if (res.synced > 0) {
+        const audit: AuditLog = {
+          id: `aud_${Date.now()}`,
+          tenantId: activeTenant.id,
+          timestamp: 'Just now',
+          actorStaffName: 'NEPA Resiliency Engine',
+          action: 'Offline Batch Synced',
+          details: `Network restored! Flushed ${res.synced} offline transaction/check-in records to Supabase Cloud.`,
+          severity: 'info',
+        };
+        setAuditLogs((prev) => [audit, ...prev]);
+      }
+    } catch (e) {
+      console.warn('Manual offline sync failed:', e);
+    }
+  };
+
+  const logExpense = (expenseData: Omit<ExpenseLog, 'id' | 'timestamp'>): ExpenseLog => {
+    const newExpense: ExpenseLog = {
+      ...expenseData,
+      id: `exp_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setExpenses((prev) => [newExpense, ...prev]);
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: expenseData.staffName,
+      action: 'Drawer Expense Logged',
+      details: `${expenseData.description} — ₦${expenseData.amount.toLocaleString()} (${expenseData.paidFromDrawer ? 'Deducted from Cash Drawer' : 'External Cash'}). Authorized with Staff PIN [${expenseData.staffPin}].`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    // Supabase cloud persistence or offline queue
+    if (supabase && isSupabaseConfigured && typeof navigator !== 'undefined' && navigator.onLine) {
+      supabase
+        .from('pos_transactions')
+        .insert({
+          item_name: `Expense: ${expenseData.description}`,
+          quantity: 1,
+          amount_paid: -expenseData.amount,
+          cashier_pin: expenseData.staffPin,
+          payment_method: 'Petty Cash / Drawer Expense',
+        })
+        .then(({ error }: any) => {
+          if (error) {
+            enqueueOfflineAction({
+              tenantId: activeTenant.id,
+              type: 'expense_log',
+              payload: newExpense,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        });
+    } else {
+      enqueueOfflineAction({
+        tenantId: activeTenant.id,
+        type: 'expense_log',
+        payload: newExpense,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return newExpense;
+  };
 
   const switchTenant = (tenantId: string) => {
     const found = tenants.find((t) => t.id === tenantId);
@@ -717,12 +857,20 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     .filter((t) => t.paymentMethod === 'bank_transfer' || t.paymentMethod === 'paystack_online')
     .reduce((sum, t) => sum + t.amount, 0);
 
+  const drawerExpenses = expenses
+    .filter((e) => e.paidFromDrawer)
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  const netCashExpected = Math.max(0, cashExpected - drawerExpenses);
+
   const totalRevenue = cashExpected + posExpected + transferExpected;
 
   const [shiftSummary, setShiftSummary] = useState<ShiftSummary>({
     staffName: activeStaff.fullName,
     shiftStartTime: '08:00 AM',
     cashExpected,
+    drawerExpenses,
+    netCashExpected,
     posExpected,
     transferExpected,
     totalRevenue,
@@ -736,12 +884,14 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       staffName: activeStaff.fullName,
       cashExpected,
+      drawerExpenses,
+      netCashExpected,
       posExpected,
       transferExpected,
       totalRevenue,
       totalCheckIns: checkIns.length,
     }));
-  }, [transactions, checkIns, activeStaff, cashExpected, posExpected, transferExpected, totalRevenue]);
+  }, [transactions, checkIns, activeStaff, cashExpected, drawerExpenses, netCashExpected, posExpected, transferExpected, totalRevenue]);
 
   const setScanResultIdle = () => {
     setActiveScanResult({ status: 'idle' });
@@ -765,7 +915,33 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       return { success: false, reason: 'Member not found' };
     }
 
-    const todayStr = '2026-10-22';
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const isDayPass = found.currentPlanId === 'plan_daily' || found.memberCode.startsWith('DAY-');
+
+    // 1-Day Pass Expiration Check (Anti-Leakage Token with Midnight Expiration)
+    if (isDayPass && todayStr > found.subscriptionEndDate) {
+      const newCheckIn: CheckIn = {
+        id: `chk_${Date.now()}`,
+        tenantId: activeTenant.id,
+        memberId: found.id,
+        memberCode: found.memberCode,
+        memberName: found.fullName,
+        timestamp: 'Just now',
+        method,
+        status: 'denied',
+        denialReason: '1-Day Walk-In Pass expired at midnight',
+        verifiedByStaffName: activeStaff.fullName,
+      };
+      setCheckIns((prev) => [newCheckIn, ...prev]);
+      setActiveScanResult({
+        member: found,
+        status: 'denied',
+        message: `1-Day Walk-In Pass expired at midnight on ${found.subscriptionEndDate}. Due renewal: ₦${plans.find((p) => p.id === 'plan_daily')?.price.toLocaleString() || '3,500'}.`,
+      });
+      return { success: false, member: found, reason: 'EXPIRED_DAY_PASS' };
+    }
+
     const isExpired = new Date(found.subscriptionEndDate) < new Date(todayStr);
 
     if (isExpired) {
@@ -818,20 +994,36 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setActiveScanResult({
       member: found,
       status: 'allowed',
-      message: `Verified! Active until ${found.subscriptionEndDate}`,
+      message: isDayPass
+        ? `Day Pass Verified! Valid until 11:59 PM tonight.`
+        : `Verified! Active until ${found.subscriptionEndDate}`,
     });
 
-    // Background Supabase cloud persistence
-    if (supabase && isSupabaseConfigured) {
+    // Cloud persistence or offline queue (NEPA Resiliency Engine)
+    if (supabase && isSupabaseConfigured && typeof navigator !== 'undefined' && navigator.onLine) {
       supabase
         .from('attendance_logs')
         .insert({
           staff_pin: activeStaff.pin || '2045',
-          status: 'Valid Entry',
+          status: isDayPass ? 'Valid Entry (1-Day Pass)' : 'Valid Entry',
         })
-        .then(({ error }) => {
-          if (error) console.warn('Supabase checkin insert fallback:', error.message);
+        .then(({ error }: any) => {
+          if (error) {
+            enqueueOfflineAction({
+              tenantId: activeTenant.id,
+              type: 'check_in',
+              payload: newCheckIn,
+              timestamp: new Date().toISOString(),
+            });
+          }
         });
+    } else {
+      enqueueOfflineAction({
+        tenantId: activeTenant.id,
+        type: 'check_in',
+        payload: newCheckIn,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     return { success: true, member: found };
@@ -846,7 +1038,22 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     photoUrl?: string;
   }) => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || plans[1];
-    const newCode = `${Math.floor(100000 + Math.random() * 900000)}`;
+    const isDayPass = selectedPlan.id === 'plan_daily' || selectedPlan.durationDays === 1;
+
+    // Determine current date string in Lagos timezone (YYYY-MM-DD)
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    let endDateStr = todayStr;
+    if (!isDayPass) {
+      const expDate = new Date(now.getTime() + (selectedPlan.durationDays || 30) * 24 * 60 * 60 * 1000);
+      endDateStr = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, '0')}-${String(expDate.getDate()).padStart(2, '0')}`;
+    }
+
+    const newCode = isDayPass
+      ? `DAY-${Math.floor(1000 + Math.random() * 9000)}`
+      : `${Math.floor(100000 + Math.random() * 900000)}`;
+
     const avatar = data.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.fullName)}&background=dc2626&color=ffffff&bold=true&size=256`;
 
     const newMember: Member = {
@@ -858,13 +1065,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       email: `${data.fullName.toLowerCase().replace(/\s+/g, '.')}@gymmember.ng`,
       photoUrl: avatar,
       status: 'active',
-      joinedDate: '2026-10-22',
+      joinedDate: todayStr,
       currentPlanId: selectedPlan.id,
-      subscriptionStartDate: '2026-10-22',
-      subscriptionEndDate: '2026-11-21',
+      subscriptionStartDate: todayStr,
+      subscriptionEndDate: endDateStr,
       remainingPtSessions: selectedPlan.ptSessionsIncluded,
       totalVisitsThisMonth: 1,
-      visitDates: ['2026-10-22'],
+      visitDates: [todayStr],
       ptSessionDates: [],
     };
 
@@ -891,8 +1098,10 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       tenantId: activeTenant.id,
       timestamp: 'Just now',
       actorStaffName: activeStaff.fullName,
-      action: 'New Member Registered',
-      details: `Registered ${newMember.fullName} (#${newMember.memberCode}) on ${selectedPlan.name} (₦${selectedPlan.price.toLocaleString()}). Channel: ${data.paymentMethod}.`,
+      action: isDayPass ? '1-Day Walk-In Pass Issued' : 'New Member Registered',
+      details: isDayPass
+        ? `Issued 1-Day Guest Pass ${newMember.memberCode} to ${newMember.fullName} (₦${selectedPlan.price.toLocaleString()}). Channel: ${data.paymentMethod}. Expires at midnight.`
+        : `Registered ${newMember.fullName} (#${newMember.memberCode}) on ${selectedPlan.name} (₦${selectedPlan.price.toLocaleString()}). Channel: ${data.paymentMethod}.`,
       severity: 'info',
     };
     setAuditLogs((prev) => [audit, ...prev]);
@@ -913,11 +1122,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setActiveScanResult({
       member: newMember,
       status: 'allowed',
-      message: `Registration complete! WhatsApp Pass dispatched to ${newMember.phoneNumber}`,
+      message: isDayPass
+        ? `1-Day Walk-In Pass active! Valid until 11:59 PM tonight.`
+        : `Registration complete! WhatsApp Pass dispatched to ${newMember.phoneNumber}`,
     });
 
-    // Background Supabase cloud persistence
-    if (supabase && isSupabaseConfigured) {
+    // Cloud persistence or offline queue
+    if (supabase && isSupabaseConfigured && typeof navigator !== 'undefined' && navigator.onLine) {
       supabase
         .from('members')
         .insert({
@@ -929,8 +1140,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           expiry_date: newMember.subscriptionEndDate,
           avatar_url: newMember.photoUrl,
         })
-        .then(({ error }) => {
-          if (error) console.warn('Supabase member insert fallback:', error.message);
+        .then(({ error }: any) => {
+          if (error) {
+            enqueueOfflineAction({
+              tenantId: activeTenant.id,
+              type: 'member_registration',
+              payload: { member: newMember, transaction: newTx },
+              timestamp: new Date().toISOString(),
+            });
+          }
         });
 
       supabase
@@ -942,9 +1160,16 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           cashier_pin: activeStaff.pin || '2045',
           payment_method: data.paymentMethod === 'cash' ? 'Cash' : data.paymentMethod === 'bank_transfer' ? 'Transfer' : 'POS Card',
         })
-        .then(({ error }) => {
+        .then(({ error }: any) => {
           if (error) console.warn('Supabase reg tx insert fallback:', error.message);
         });
+    } else {
+      enqueueOfflineAction({
+        tenantId: activeTenant.id,
+        type: 'member_registration',
+        payload: { member: newMember, transaction: newTx },
+        timestamp: new Date().toISOString(),
+      });
     }
 
     return newMember;
@@ -1238,7 +1463,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   // Shift Close
   const closeShift = (cashCounted: number) => {
-    const discrepancy = cashCounted - shiftSummary.cashExpected;
+    const expectedTarget = shiftSummary.netCashExpected ?? (shiftSummary.cashExpected - (shiftSummary.drawerExpenses || 0));
+    const discrepancy = cashCounted - expectedTarget;
     const isBalanced = discrepancy === 0;
 
     const audit: AuditLog = {
@@ -1247,7 +1473,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       timestamp: 'Just now',
       actorStaffName: activeStaff.fullName,
       action: 'Shift Closed & Reconciled',
-      details: `Shift closed by ${activeStaff.fullName}. Expected Cash: ₦${shiftSummary.cashExpected.toLocaleString()}, Counted: ₦${cashCounted.toLocaleString()}. Discrepancy: ₦${discrepancy.toLocaleString()}.`,
+      details: `Shift closed by ${activeStaff.fullName}. Gross Cash: ₦${shiftSummary.cashExpected.toLocaleString()}, Less Drawer Expenses: -₦${(shiftSummary.drawerExpenses || 0).toLocaleString()}, Net Cash Expected: ₦${expectedTarget.toLocaleString()}, Counted: ₦${cashCounted.toLocaleString()}. Discrepancy: ₦${discrepancy.toLocaleString()}.`,
       severity: isBalanced ? 'info' : 'alert',
     };
     setAuditLogs((prev) => [audit, ...prev]);
@@ -1310,7 +1536,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (q.includes('cash') || q.includes('drawer')) {
-      return `Currently ₦${shiftSummary.cashExpected.toLocaleString()} cash in hand collected across ${transactions.filter((t) => t.paymentMethod === 'cash').length} transactions. Last cash collected by Receptionist ${activeStaff.fullName}.`;
+      return `Currently ₦${shiftSummary.cashExpected.toLocaleString()} gross cash collected across ${transactions.filter((t) => t.paymentMethod === 'cash').length} transactions. Less ₦${(shiftSummary.drawerExpenses || 0).toLocaleString()} petty cash/diesel expenses. Net cash expected in drawer: ₦${(shiftSummary.netCashExpected ?? shiftSummary.cashExpected).toLocaleString()}.`;
+    }
+
+    if (q.includes('diesel') || q.includes('generator') || q.includes('fuel') || q.includes('expense')) {
+      return `Chief, ₦${(shiftSummary.drawerExpenses || 0).toLocaleString()} has been logged for petty cash / generator diesel expenses today across ${expenses.length} expense entries. Net cash expected in drawer after fuel deductions is ₦${(shiftSummary.netCashExpected ?? shiftSummary.cashExpected).toLocaleString()}.`;
     }
 
     if (q.includes('expire') || q.includes('tomorrow')) {
@@ -1328,10 +1558,10 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (q.includes('report') || q.includes('summary') || q.includes('today')) {
-      return `Good day Chief! Today's Financial Summary for ${activeTenant.name}:\n• Gross Revenue: ₦${shiftSummary.totalRevenue.toLocaleString()}\n• Bank Transfers: ₦${shiftSummary.transferExpected.toLocaleString()}\n• POS Card: ₦${shiftSummary.posExpected.toLocaleString()}\n• Cash in Drawer: ₦${shiftSummary.cashExpected.toLocaleString()}\n• Total Check-ins: ${checkIns.length} members\n• Overrides: ${shiftSummary.overridesCount} staff flags.`;
+      return `Good day Chief! Today's Financial Summary for ${activeTenant.name}:\n• Gross Revenue: ₦${shiftSummary.totalRevenue.toLocaleString()}\n• Bank Transfers: ₦${shiftSummary.transferExpected.toLocaleString()}\n• POS Card: ₦${shiftSummary.posExpected.toLocaleString()}\n• Gross Cash in Drawer: ₦${shiftSummary.cashExpected.toLocaleString()}\n• Less Drawer Expenses (Diesel/Petty Cash): -₦${(shiftSummary.drawerExpenses || 0).toLocaleString()}\n• Net Cash Expected: ₦${(shiftSummary.netCashExpected ?? shiftSummary.cashExpected).toLocaleString()}\n• Total Check-ins: ${checkIns.length} members\n• Overrides: ${shiftSummary.overridesCount} staff flags.`;
     }
 
-    return `Chief, total gross revenue today is ₦${shiftSummary.totalRevenue.toLocaleString()} across ${transactions.length} payments. ${checkIns.length} members have checked in so far today at ${activeTenant.name}.`;
+    return `Chief, total gross revenue today is ₦${shiftSummary.totalRevenue.toLocaleString()} across ${transactions.length} payments. ${checkIns.length} members have checked in so far today at ${activeTenant.name}. Net cash expected in drawer after diesel/expenses is ₦${(shiftSummary.netCashExpected ?? shiftSummary.cashExpected).toLocaleString()}.`;
   };
 
   return (
@@ -1382,6 +1612,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         restockItem,
         reconcileStockCount,
         isCloudConnected,
+        expenses,
+        logExpense,
+        isOfflineMode,
+        offlineQueueCount,
+        triggerManualOfflineSync,
         hasFeature,
         upgradeTenantTier,
         isUpgradeModalOpen,

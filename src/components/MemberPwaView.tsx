@@ -100,7 +100,14 @@ export function MemberPwaView() {
     return member.ptSessionDates.includes(dateStr);
   };
 
-  const memberBarcodeTag = `${member.memberCode}-${member.fullName.replace(/[^a-zA-Z]/g, '').slice(0, 8).toUpperCase()}-VIP`;
+  const isDayPass = member.currentPlanId === 'plan_daily' || member.memberCode.startsWith('DAY-');
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isExpired = todayStr > member.subscriptionEndDate || new Date(member.subscriptionEndDate) < new Date(todayStr);
+
+  const memberBarcodeTag = isDayPass
+    ? `${member.memberCode}-${member.fullName.replace(/[^a-zA-Z]/g, '').slice(0, 8).toUpperCase()}-DAYPASS`
+    : `${member.memberCode}-${member.fullName.replace(/[^a-zA-Z]/g, '').slice(0, 8).toUpperCase()}-VIP`;
 
   return (
     <div className="flex flex-col items-center justify-center py-4 space-y-4 font-sans">
@@ -134,19 +141,23 @@ export function MemberPwaView() {
         </div>
 
         {/* Club Header */}
-        <div className="bg-red-600 -mx-4 -mt-1 px-4 py-3 flex items-center justify-between text-white shadow-md">
+        <div className={`${isDayPass ? 'bg-amber-600' : 'bg-red-600'} -mx-4 -mt-1 px-4 py-3 flex items-center justify-between text-white shadow-md transition-colors`}>
           <div className="flex items-center gap-2">
-            <div className="p-1 hover:bg-red-700 rounded-lg cursor-pointer">
+            <div className="p-1 hover:bg-black/20 rounded-lg cursor-pointer">
               <span className="block w-4 h-0.5 bg-white mb-1"></span>
               <span className="block w-4 h-0.5 bg-white mb-1"></span>
               <span className="block w-4 h-0.5 bg-white"></span>
             </div>
             <div>
               <h2 className="font-extrabold text-sm tracking-tight leading-tight">{activeTenant.name}</h2>
-              <p className="text-[10px] text-red-100">{activeTenant.location}</p>
+              <p className="text-[10px] text-white/80">{activeTenant.location}</p>
             </div>
           </div>
-          <span className="text-[10px] bg-red-800/80 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">VIP</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+            isDayPass ? 'bg-black/40 text-amber-200' : 'bg-red-800/80 text-white'
+          }`}>
+            {isDayPass ? '1-DAY PASS' : 'VIP'}
+          </span>
         </div>
 
         {/* Toast Notification */}
@@ -167,13 +178,13 @@ export function MemberPwaView() {
                 className="relative cursor-pointer group flex-shrink-0"
                 title="Tap to snap selfie or change photo"
               >
-                <div className="w-12 h-12 rounded-full border-2 border-red-500 overflow-hidden bg-zinc-800 flex items-center justify-center relative shadow-md">
+                <div className={`w-12 h-12 rounded-full border-2 ${isDayPass ? 'border-amber-500' : 'border-red-500'} overflow-hidden bg-zinc-800 flex items-center justify-center relative shadow-md`}>
                   <img src={member.photoUrl} alt={member.fullName} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-60 group-hover:opacity-100 transition">
                     <Camera className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <span className="absolute -bottom-1 -right-1 bg-red-600 text-white rounded-full p-1 shadow">
+                <span className={`absolute -bottom-1 -right-1 ${isDayPass ? 'bg-amber-500' : 'bg-red-600'} text-white rounded-full p-1 shadow`}>
                   <Camera className="w-2.5 h-2.5" />
                 </span>
               </div>
@@ -181,14 +192,26 @@ export function MemberPwaView() {
               <div>
                 <h3 className="font-black text-sm text-white leading-tight">{member.fullName}</h3>
                 <p className="text-xs text-zinc-400 font-mono">#{member.memberCode}</p>
-                <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mt-0.5">
-                  <CheckCircle2 className="w-3 h-3" />
-                  <span>Active until {member.subscriptionEndDate}</span>
+                <div className={`flex items-center gap-1 text-[10px] font-bold mt-0.5 ${
+                  isExpired ? 'text-red-400' : isDayPass ? 'text-amber-400' : 'text-emerald-400'
+                }`}>
+                  {isExpired ? <Clock className="w-3 h-3 text-red-400" /> : isDayPass ? <Clock className="w-3 h-3 text-amber-400" /> : <CheckCircle2 className="w-3 h-3" />}
+                  <span>
+                    {isExpired
+                      ? `Expired on ${member.subscriptionEndDate}`
+                      : isDayPass
+                      ? `Valid Today • Expires at 11:59 PM`
+                      : `Active until ${member.subscriptionEndDate}`}
+                  </span>
                 </div>
               </div>
             </div>
-            <span className="text-[10px] bg-zinc-800 text-zinc-300 px-2.5 py-1 rounded-xl font-bold border border-zinc-700">
-              Monthly VIP
+            <span className={`text-[10px] px-2.5 py-1 rounded-xl font-bold border ${
+              isDayPass
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+            }`}>
+              {isDayPass ? '1-Day Walk-In' : 'Monthly VIP'}
             </span>
           </div>
 
@@ -211,6 +234,13 @@ export function MemberPwaView() {
                 {memberBarcodeTag}
               </p>
             </div>
+
+            {isDayPass && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg py-1 px-2 text-[10px] text-amber-300 font-bold uppercase tracking-wider">
+                ⚠️ Single-Day Pass • Valid Today Until 11:59 PM
+              </div>
+            )}
+
             <p className="text-[11px] text-zinc-400">Hold near counter scanner or turnstile to clock in</p>
           </div>
 
