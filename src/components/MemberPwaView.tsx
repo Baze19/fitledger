@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useGym } from '@/context/gym-context';
+import { CameraCaptureModal } from '@/components/CameraCaptureModal';
 import { 
   QrCode, Calendar, Dumbbell, Users, CreditCard, ChevronRight, 
   CheckCircle2, Clock, Sparkles, Camera, Zap, Share2, Copy, 
@@ -22,6 +23,7 @@ export function MemberPwaView() {
 
   const [showReferModal, setShowReferModal] = useState(false);
   const [referCopied, setReferCopied] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   // Photo Upload State
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -161,7 +163,7 @@ export function MemberPwaView() {
           <div className="bg-zinc-900 border border-zinc-800 p-3.5 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
-                onClick={() => photoInputRef.current?.click()}
+                onClick={() => setIsCameraOpen(true)}
                 className="relative cursor-pointer group flex-shrink-0"
                 title="Tap to snap selfie or change photo"
               >
@@ -565,6 +567,19 @@ export function MemberPwaView() {
           </div>
         </div>
       )}
+
+      {/* Live Selfie Camera Modal */}
+      <CameraCaptureModal
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={(dataUrl) => {
+          updateMemberPhoto(member.id, dataUrl);
+          setPhotoToast('✓ Profile photo updated!');
+          setTimeout(() => setPhotoToast(null), 3000);
+        }}
+        title="Snap Member Selfie"
+        subtitle="Align face to update your digital pass"
+      />
 
     </div>
   );

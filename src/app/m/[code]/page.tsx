@@ -9,6 +9,7 @@ import {
   Maximize2, ScanLine, Gift, X, AlertCircle
 } from 'lucide-react';
 import { initializePaystackPayment } from '@/lib/paystack';
+import { CameraCaptureModal } from '@/components/CameraCaptureModal';
 import Link from 'next/link';
 
 function MemberPassContent() {
@@ -27,6 +28,7 @@ function MemberPassContent() {
   
   const [showReferModal, setShowReferModal] = useState(false);
   const [referCopied, setReferCopied] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   
   // Photo Upload State
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -181,9 +183,9 @@ function MemberPassContent() {
               <div className="flex items-center gap-3">
                 {/* Avatar with Camera badge */}
                 <div
-                  onClick={() => photoInputRef.current?.click()}
+                  onClick={() => setIsCameraOpen(true)}
                   className="relative cursor-pointer group flex-shrink-0"
-                  title="Tap to snap selfie or change photo"
+                  title="Tap to snap live selfie or upload photo"
                 >
                   <div className="w-13 h-13 rounded-full border-2 border-red-500 overflow-hidden bg-zinc-800 flex items-center justify-center relative shadow-md">
                     {member.photoUrl ? (
@@ -617,6 +619,19 @@ function MemberPassContent() {
             </div>
           </div>
         )}
+
+        {/* Live Selfie Camera Modal */}
+        <CameraCaptureModal
+          isOpen={isCameraOpen}
+          onClose={() => setIsCameraOpen(false)}
+          onCapture={(dataUrl) => {
+            updateMemberPhoto(member.id, dataUrl);
+            setPhotoToast('✓ Profile photo updated successfully!');
+            setTimeout(() => setPhotoToast(null), 3500);
+          }}
+          title="Snap Member Selfie"
+          subtitle="Align your face to update your digital pass"
+        />
 
       </div>
     </div>

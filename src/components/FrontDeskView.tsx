@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { useGym } from '@/context/gym-context';
 import { ManualOverrideModal } from '@/components/ManualOverrideModal';
+import { CameraCaptureModal } from '@/components/CameraCaptureModal';
 import { Member, Transaction, PaymentMethod } from '@/types';
 import { initializePaystackPayment } from '@/lib/paystack';
 import {
@@ -61,6 +62,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   const [newPlanId, setNewPlanId] = useState(plans[1]?.id || 'plan_monthly_std');
   const [newPaymentMethod, setNewPaymentMethod] = useState<Transaction['paymentMethod']>('bank_transfer');
   const [newPhotoUrl, setNewPhotoUrl] = useState<string>('');
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -560,11 +562,21 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                          onClick={() => setIsCameraOpen(true)}
+                          className="px-2.5 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+                          title="Open live webcam to take picture"
                         >
-                          <Upload className="w-3 h-3 text-red-400" />
-                          <span>{newPhotoUrl ? 'Change' : 'Snap / Upload'}</span>
+                          <Camera className="w-3 h-3" />
+                          <span>Snap Face</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Upload image from file"
+                        >
+                          <Upload className="w-3 h-3 text-zinc-400" />
+                          <span>Upload</span>
                         </button>
                         {newPhotoUrl && (
                           <button
@@ -797,6 +809,15 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
           onClose={() => setOverrideModalMember(null)}
         />
       )}
+
+      {/* Live Webcam / Camera Snap Modal */}
+      <CameraCaptureModal
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={(dataUrl) => setNewPhotoUrl(dataUrl)}
+        title="Snap Member Face"
+        subtitle="Align face in frame for anti-theft check-in verification"
+      />
 
     </div>
   );
