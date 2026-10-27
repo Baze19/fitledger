@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, Suspense } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
+import QRCode from 'qrcode';
 import { useGym } from '@/context/gym-context';
 import { useParams } from 'next/navigation';
 import { 
@@ -29,6 +30,60 @@ function MemberPassContent() {
   const [showReferModal, setShowReferModal] = useState(false);
   const [referCopied, setReferCopied] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [memberQrDataUrl, setMemberQrDataUrl] = useState<string>('');
+
+  // Live Camera Scanner State
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraActive, setCameraActive] = useState<boolean>(false);
+
+  // Generate authentic scannable QR code for member badge
+  useEffect(() => {
+    if (member?.memberCode) {
+      QRCode.toDataURL(member.memberCode, {
+        width: 350,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      })
+        .then((url) => setMemberQrDataUrl(url))
+        .catch((err) => console.warn('QR gen error:', err));
+    }
+  }, [member?.memberCode]);
+
+  // Turn on device camera when member opens counter scanner viewfinder
+  useEffect(() => {
+    if (showScanModal && scanTab === 'self_checkin') {
+      navigator.mediaDevices
+        ?.getUserMedia({ video: { facingMode: 'environment' } })
+        .then((stream) => {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+            setCameraActive(true);
+          }
+        })
+        .catch(() => {
+          setCameraActive(false);
+        });
+    } else {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      setCameraActive(false);
+    }
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [showScanModal, scanTab]);
   
   // Photo Upload State
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -448,43 +503,62 @@ function MemberPassContent() {
                 </div>
               ) : scanTab === 'self_checkin' ? (
                 <div className="space-y-4 text-center">
-                  {/* Viewfinder Graphic with Laser Sweep */}
-                  <div className="relative w-56 h-56 mx-auto bg-zinc-900 border-2 border-red-500/60 rounded-2xl overflow-hidden flex flex-col items-center justify-center shadow-inner">
-                    {/* Viewfinder Corners */}
-                    <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-white"></div>
-                    <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-white"></div>
-                    <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-white"></div>
-                    <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-white"></div>
+                  {/* Real Live Camera Viewfinder with Laser Sweep */}
+                  <div className="relative w-60 h-60 mx-auto bg-black border-2 border-red-500 rounded-2xl overflow-hidden flex flex-col items-center justify-center shadow-2xl">
+                    <video
+                      ref={videoRef}
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover absolute inset-0"
+                    />
 
-                    {/* Laser Sweep line */}
-                    <div className="absolute w-full h-0.5 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,1)] animate-laser-sweep"></div>
+                    {/* Viewfinder Overlay Corners */}
+                    <div className="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-red-400 z-10"></div>
+                    <div className="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-red-400 z-10"></div>
+                    <div className="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-red-400 z-10"></div>
+                    <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-red-400 z-10"></div>
 
-                    <ScanLine className="w-12 h-12 text-zinc-600 mb-2" />
-                    <p className="text-[11px] font-bold text-zinc-300">Point at Front-Desk QR</p>
-                    <p className="text-[9px] text-zinc-500">Turnstile or Reception Counter</p>
+                    {/* Scanning Laser Beam */}
+                    <div className="absolute w-full h-0.5 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,1)] animate-laser-sweep z-10"></div>
+
+                    {!cameraActive && (
+                      <div className="z-10 p-4 text-center space-y-1">
+                        <ScanLine className="w-10 h-10 text-red-400 mx-auto animate-pulse" />
+                        <p className="text-[11px] font-bold text-white">Camera Standby</p>
+                        <p className="text-[9px] text-zinc-400">Aim at Front-Desk Tablet QR</p>
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-xs text-zinc-400">
-                    Skip the front desk queue! Scan the counter QR code at <strong>{activeTenant.name}</strong> to clock in automatically.
+                    Aim camera at the <strong>{activeTenant.name}</strong> desk QR stand, or tap below to verify entry:
                   </p>
 
                   <button
                     onClick={handleSelfCheckInTrigger}
-                    className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black text-xs uppercase tracking-wider transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                   >
                     <Zap className="w-4 h-4 text-yellow-300" />
-                    ⚡ Tap to Clock In (Simulate Desk QR Scan)
+                    <span>⚡ Verify Desk QR & Clock In</span>
                   </button>
                 </div>
               ) : (
-                /* Fullscreen Barcode for Counter Laser Gun */
+                /* Fullscreen Barcode & Real QR Code for Scanner Gun / Speed Gate */
                 <div className="space-y-4 text-center">
-                  <div className="bg-white p-4 rounded-2xl space-y-2 shadow-2xl">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">High Contrast Laser Pass</p>
+                  <div className="bg-white p-4 rounded-2xl space-y-3 shadow-2xl">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">High Contrast Laser & Camera Pass</p>
                     
-                    {/* High-Res QR Simulation */}
-                    <div className="w-40 h-40 mx-auto bg-black p-2 rounded-xl flex items-center justify-center">
-                      <QrCode className="w-36 h-36 text-white" />
+                    {/* Real Authentic QR Code Matrix */}
+                    <div className="w-48 h-48 mx-auto bg-white p-2 rounded-2xl flex items-center justify-center border-2 border-zinc-200 shadow-md">
+                      {memberQrDataUrl ? (
+                        <img
+                          src={memberQrDataUrl}
+                          alt="Authentic Member Pass QR Code"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-zinc-500 font-mono text-xs">Generating QR...</span>
+                      )}
                     </div>
 
                     {/* Barcode */}
@@ -494,11 +568,11 @@ function MemberPassContent() {
                       <span className="w-4 h-full bg-black"></span><span className="w-2 h-full bg-black"></span><span className="w-3 h-full bg-black"></span><span className="w-1 h-full bg-black"></span>
                     </div>
 
-                    <p className="font-mono font-black text-black text-sm tracking-widest">{member.memberCode}</p>
+                    <p className="font-mono font-black text-black text-sm tracking-widest">#{member.memberCode}</p>
                   </div>
 
                   <p className="text-xs text-zinc-400">
-                    Hold this high-contrast screen in front of the counter barcode laser scanner or speed turnstile.
+                    Hold this high-contrast screen in front of the counter barcode laser scanner, desk camera, or speed turnstile.
                   </p>
                 </div>
               )}

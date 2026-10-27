@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import QRCode from 'qrcode';
 import { useGym } from '@/context/gym-context';
 import { ManualOverrideModal } from '@/components/ManualOverrideModal';
 import { CameraCaptureModal } from '@/components/CameraCaptureModal';
@@ -79,8 +80,30 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [showTabletStandModal, setShowTabletStandModal] = useState(false);
   const [kioskInput, setKioskInput] = useState('');
+  const [kioskQrDataUrl, setKioskQrDataUrl] = useState<string>('');
+  const [kioskFeedback, setKioskFeedback] = useState<{
+    status: 'success' | 'expired' | 'not_found' | 'idle';
+    message: string;
+    member?: Member;
+  }>({ status: 'idle', message: '' });
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Generate authentic, scannable QR code linking directly to express check-in
+  useEffect(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fitledger-v1.vercel.app';
+    const checkinUrl = `${origin}/checkin?gym=${activeTenant.slug || activeTenant.id}`;
+    QRCode.toDataURL(checkinUrl, {
+      width: 450,
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    })
+      .then((url) => setKioskQrDataUrl(url))
+      .catch((err) => console.warn('QR generation error:', err));
+  }, [activeTenant.slug, activeTenant.id]);
 
   const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,11 +188,36 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     const val = (query ?? kioskInput).trim();
     if (!val) return;
     const res = checkInMember(val, 'phone_lookup');
-    if (res.success) {
+    if (res.success && res.member) {
       playChime('success');
-      setTimeout(() => setKioskInput(''), 4000);
+      setKioskFeedback({
+        status: 'success',
+        message: `Welcome to ${activeTenant.name}, ${res.member.fullName}! Entry verified.`,
+        member: res.member,
+      });
+      setTimeout(() => {
+        setKioskInput('');
+        setKioskFeedback({ status: 'idle', message: '' });
+      }, 4500);
+    } else if (res.reason === 'EXPIRED' || res.reason === 'EXPIRED_DAY_PASS') {
+      playChime('error');
+      setKioskFeedback({
+        status: 'expired',
+        message: `Membership expired on ${res.member?.subscriptionEndDate || 'today'}. Please renew pass.`,
+        member: res.member,
+      });
+      setTimeout(() => {
+        setKioskFeedback({ status: 'idle', message: '' });
+      }, 5000);
     } else {
       playChime('error');
+      setKioskFeedback({
+        status: 'not_found',
+        message: `No active pass found for "${val}". Sample code: 124253 or phone: 0803 456 7890.`,
+      });
+      setTimeout(() => {
+        setKioskFeedback({ status: 'idle', message: '' });
+      }, 5000);
     }
   };
 
@@ -975,51 +1023,118 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
           {/* Kiosk Body */}
           <div className="max-w-4xl w-full mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center py-6">
             
-            {/* Left: The Big QR Stand */}
-            <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-red-950/30 border border-zinc-800 p-8 rounded-3xl text-center space-y-4 shadow-2xl">
-              <div className="inline-block bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full">
+            {/* Left: The Big Authentic QR Stand */}
+            <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-red-950/30 border border-zinc-800 p-7 rounded-3xl text-center space-y-4 shadow-2xl">
+              <div className="inline-block bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
                 Rush-Hour Express Scan
               </div>
               
-              {/* High Contrast QR Badge */}
-              <div className="bg-white p-5 rounded-3xl w-52 h-52 mx-auto flex items-center justify-center shadow-2xl border-4 border-zinc-200">
-                <QrCode className="w-full h-full text-black" />
+              {/* High Contrast Authentic QR Code Matrix */}
+              <div className="bg-white p-3.5 rounded-3xl w-56 h-56 mx-auto flex items-center justify-center shadow-2xl border-4 border-zinc-200">
+                {kioskQrDataUrl ? (
+                  <img
+                    src={kioskQrDataUrl}
+                    alt="Authentic Scannable Front Desk QR Code"
+                    className="w-full h-full object-contain rounded-2xl"
+                  />
+                ) : (
+                  <div className="text-zinc-500 font-mono text-xs">Generating Scannable QR...</div>
+                )}
               </div>
 
               <div className="space-y-1">
-                <h3 className="font-black text-xl text-white">Scan to Check In</h3>
-                <p className="text-xs text-zinc-400 max-w-xs mx-auto">
-                  Open your <strong>FitLedger pass</strong> on your phone and point your camera at this QR code to clock in instantly!
+                <h3 className="font-black text-xl text-white">Scan with Any Phone Camera</h3>
+                <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
+                  Point your phone's camera at this QR code. A link to <strong>Express Check-In</strong> will pop up automatically!
                 </p>
+                <div className="pt-1">
+                  <span className="text-[11px] text-emerald-400 font-mono bg-zinc-950 px-3 py-1 rounded-full border border-zinc-800 inline-block font-semibold">
+                    ● Live URL: {typeof window !== 'undefined' ? `${window.location.origin}/checkin` : 'fitledger-v1.vercel.app/checkin'}
+                  </span>
+                </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-1">
                 <span className="text-[10px] text-zinc-500 font-mono">Terminal ID: {activeTenant.slug.toUpperCase()}-COUNTER-01</span>
               </div>
             </div>
 
-            {/* Right: Phone Number / Pass Code Keypad */}
-            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl space-y-5 shadow-2xl">
+            {/* Right: Phone Number / Pass Code Keypad with Reactive Live Feedback */}
+            <div className="bg-zinc-900 border border-zinc-800 p-7 rounded-3xl space-y-5 shadow-2xl">
+              
+              {/* Feedback State (When member submitted code/phone) */}
+              {kioskFeedback.status === 'success' && kioskFeedback.member && (
+                <div className="bg-emerald-950/40 border-2 border-emerald-500 rounded-3xl p-6 text-center space-y-3.5 shadow-2xl animate-scale-up">
+                  <div className="relative w-20 h-20 mx-auto">
+                    <img
+                      src={kioskFeedback.member.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250'}
+                      alt={kioskFeedback.member.fullName}
+                      className="w-20 h-20 rounded-full object-cover border-4 border-emerald-400 shadow-xl"
+                    />
+                    <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-black rounded-full p-1 shadow-lg">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                      ACCESS GRANTED
+                    </span>
+                    <h3 className="text-2xl font-black text-white mt-1">
+                      {kioskFeedback.member.fullName}
+                    </h3>
+                    <p className="text-xs text-emerald-400 font-mono mt-0.5">
+                      Pass #{kioskFeedback.member.memberCode} • Active until {kioskFeedback.member.subscriptionEndDate}
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-zinc-300 bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-800">
+                    Welcome! Have a powerful workout session. 🔥
+                  </p>
+                </div>
+              )}
+
+              {kioskFeedback.status === 'not_found' && (
+                <div className="bg-red-950/40 border-2 border-red-500 rounded-2xl p-4 text-center space-y-2 shadow-2xl animate-shake">
+                  <div className="w-8 h-8 rounded-full bg-red-600/30 text-red-400 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-black text-red-300">Member Not Found</h4>
+                  <p className="text-xs text-zinc-300 leading-relaxed">{kioskFeedback.message}</p>
+                </div>
+              )}
+
+              {kioskFeedback.status === 'expired' && (
+                <div className="bg-amber-950/40 border-2 border-amber-500 rounded-2xl p-4 text-center space-y-2 shadow-2xl animate-shake">
+                  <div className="w-8 h-8 rounded-full bg-amber-600/30 text-amber-400 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-black text-amber-300">Membership Expired</h4>
+                  <p className="text-xs text-zinc-300 leading-relaxed">{kioskFeedback.message}</p>
+                </div>
+              )}
+
+              {/* Standard Keypad Input Interface */}
               <div className="space-y-1 text-center sm:text-left">
                 <h3 className="font-black text-base text-white">No Phone? Enter Details</h3>
-                <p className="text-xs text-zinc-400">Type your WhatsApp phone number or 6-digit pass code below:</p>
+                <p className="text-xs text-zinc-400">Type your phone number (e.g. 0803 456 7890) or 6-digit pass code:</p>
               </div>
 
               {/* Display Box */}
-              <div className="bg-zinc-950 border-2 border-red-500/50 rounded-2xl p-4 text-center">
+              <div className="bg-zinc-950 border-2 border-red-500/50 rounded-2xl p-3.5 text-center shadow-inner">
                 <span className="text-2xl font-mono font-black tracking-widest text-white">
-                  {kioskInput || <span className="text-zinc-600">e.g. 0803... or 124253</span>}
+                  {kioskInput || <span className="text-zinc-600 text-base font-normal">e.g. 124253 or 0803...</span>}
                 </span>
               </div>
 
               {/* Touch Keypad Grid */}
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLEAR', '0', 'DEL'].map((k) => (
                   <button
                     key={k}
                     type="button"
                     onClick={() => handleKioskKeypad(k)}
-                    className={`py-3.5 rounded-2xl font-black text-sm transition active:scale-95 cursor-pointer shadow ${
+                    className={`py-3 rounded-2xl font-black text-sm transition active:scale-95 cursor-pointer shadow ${
                       k === 'CLEAR'
                         ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs'
                         : k === 'DEL'
@@ -1040,6 +1155,32 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                 <CheckCircle2 className="w-4 h-4" />
                 Clock In Now
               </button>
+
+              {/* Instant Test Drive Badges */}
+              <div className="pt-2 border-t border-zinc-800 flex items-center justify-center gap-2 text-[10px]">
+                <span className="text-zinc-500">Quick Test Passes:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKioskInput('124253');
+                    handleKioskSubmit('124253');
+                  }}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded-lg font-mono font-bold border border-zinc-700 cursor-pointer"
+                >
+                  Abiodun (#124253)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKioskInput('120455');
+                    handleKioskSubmit('120455');
+                  }}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded-lg font-mono font-bold border border-zinc-700 cursor-pointer"
+                >
+                  Chioma (#120455)
+                </button>
+              </div>
+
             </div>
 
           </div>
