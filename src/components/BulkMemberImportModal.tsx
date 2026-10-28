@@ -316,7 +316,7 @@ export function BulkMemberImportModal({ isOpen, onClose }: BulkMemberImportModal
                       <span className="text-base">📱</span>
                       <div>
                         <span className="font-bold text-white block">Auto-Dispatch WhatsApp Digital Passes</span>
-                        <span className="text-[10px] text-zinc-400">Sends each member their personal barcode link (fitledger-v1.vercel.app/m/[code])</span>
+                        <span className="text-[10px] text-zinc-400">Sends each member their personal barcode pass link (/m/[code])</span>
                       </div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -370,7 +370,7 @@ export function BulkMemberImportModal({ isOpen, onClose }: BulkMemberImportModal
                     📱 WhatsApp Welcome Passes Dispatched to all {importSuccessCount} members:
                   </span>
                   <p className="text-[10px] text-zinc-300 font-mono bg-zinc-950 p-2 rounded-lg border border-zinc-800">
-                    &ldquo;Hello! Welcome to {activeTenant.name}. Your digital gym pass is active. Tap to view your barcode pass: https://fitledger-v1.vercel.app/m/[pass]&rdquo;
+                    &ldquo;Hello! Welcome to {activeTenant.name}. Your digital gym pass is active. Tap to view your barcode pass: {(typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')}/m/[pass]&rdquo;
                   </p>
                 </div>
               )}

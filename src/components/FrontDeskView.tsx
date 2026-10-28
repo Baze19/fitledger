@@ -101,7 +101,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
 
   // Generate authentic, scannable QR code linking directly to express check-in
   useEffect(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fitledger-v1.vercel.app';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     const checkinUrl = `${origin}/checkin?gym=${activeTenant.slug || activeTenant.id}`;
     QRCode.toDataURL(checkinUrl, {
       width: 450,
@@ -1165,7 +1165,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                 </p>
                 <div className="pt-1">
                   <span className="text-[11px] text-emerald-400 font-mono bg-zinc-950 px-3 py-1 rounded-full border border-zinc-800 inline-block font-semibold">
-                    ● Live Kiosk URL: {typeof window !== 'undefined' ? `${window.location.origin}/checkin?gym=${activeTenant.slug || activeTenant.id}` : `fitledger.ng/checkin?gym=${activeTenant.slug || activeTenant.id}`}
+                    ● Live Kiosk URL: {(typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')}/checkin?gym={activeTenant.slug || activeTenant.id}
                   </span>
                 </div>
               </div>

@@ -177,7 +177,8 @@ export function MemberPwaView() {
   };
 
   const handleCopyReferral = () => {
-    const refUrl = `https://fitledger-v1.vercel.app/m/${member.memberCode}?ref=${member.memberCode}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const refUrl = `${origin}/m/${member.memberCode}?ref=${member.memberCode}`;
     navigator.clipboard.writeText(refUrl).then(() => {
       setReferCopied(true);
       setTimeout(() => setReferCopied(false), 2500);
@@ -598,7 +599,8 @@ export function MemberPwaView() {
         const headlineText = refProg?.headline || `Give ₦${friendDiscount.toLocaleString()} Off, Get ${rewardDays} Free Days! 🔥`;
         const termsText = refProg?.termsDescription || `Valid when friend signs up for a monthly or quarterly VIP pass.`;
 
-        const dynamicWhatsappText = `*Hey! I workout at ${activeTenant.name} (${activeTenant.location})* 🏋️‍♂️💪\n\nJoin me this month and get *₦${friendDiscount.toLocaleString()} off* your VIP membership pass!\n\nUse my referral code *#${member.memberCode}* or view my gym pass here:\n👉 https://fitledger-v1.vercel.app/m/${member.memberCode}\n\nLet's get fit together!`;
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+        const dynamicWhatsappText = `*Hey! I workout at ${activeTenant.name} (${activeTenant.location})* 🏋️‍♂️💪\n\nJoin me this month and get *₦${friendDiscount.toLocaleString()} off* your VIP membership pass!\n\nUse my referral code *#${member.memberCode}* or view my gym pass here:\n👉 ${origin}/m/${member.memberCode}\n\nLet's get fit together!`;
 
         return (
           <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">

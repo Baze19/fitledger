@@ -730,7 +730,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     };
     setAuditLogs((prev) => [audit, ...prev]);
 
-    const whatsappMessage = `*Welcome to FitLedger OS!* 🏋️‍♂️\n\nHello ${data.ownerName},\nYour enterprise gym workspace for *${data.name}* is now live!\n\n🔗 *Login Portal:* https://fitledger.ng/login\n📧 *Email/Username:* ${data.ownerEmail}\n🔑 *Temporary Password:* ${tempPassword}\n\n*Next Steps:*\n1. Log in to your Owner Business Suite.\n2. Add your receptionists with their 4-digit Shift PINs.\n3. Generate instant member passes for your active members.\n\n_Protected by FitLedger OS Lagos Anti-Theft Architecture._`;
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const whatsappMessage = `*Welcome to FitLedger OS!* 🏋️‍♂️\n\nHello ${data.ownerName},\nYour enterprise gym workspace for *${data.name}* is now live!\n\n🔗 *Login Portal:* ${appUrl}/login\n📧 *Email/Username:* ${data.ownerEmail}\n🔑 *Temporary Password:* ${tempPassword}\n\n*Next Steps:*\n1. Log in to your Owner Business Suite.\n2. Add your receptionists with their 4-digit Shift PINs.\n3. Generate instant member passes for your active members.\n\n_Protected by FitLedger OS Lagos Anti-Theft Architecture._`;
 
     return { tenant: newTenant, owner: newOwner, whatsappMessage };
   };

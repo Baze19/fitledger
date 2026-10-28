@@ -42,7 +42,11 @@ export async function POST(request: Request) {
       joinedDate: new Date().toISOString().split('T')[0],
     };
 
-    const whatsappOnboardingMessage = `*Welcome to FitLedger OS!* 🏋️‍♂️\n\nHello ${ownerName},\nYour enterprise gym workspace for *${name}* is now live!\n\n🔗 *Login Portal:* https://fitledger.ng/login\n📧 *Email/Username:* ${newTenant.ownerEmail}\n🔑 *Temporary Password:* ${tempPassword}\n\n_Protected by FitLedger OS Lagos Anti-Theft Architecture._`;
+    const host = request.headers.get('host') || 'localhost:3000';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const appUrl = `${protocol}://${host}`;
+
+    const whatsappOnboardingMessage = `*Welcome to FitLedger OS!* 🏋️‍♂️\n\nHello ${ownerName},\nYour enterprise gym workspace for *${name}* is now live!\n\n🔗 *Login Portal:* ${appUrl}/login\n📧 *Email/Username:* ${newTenant.ownerEmail}\n🔑 *Temporary Password:* ${tempPassword}\n\n_Protected by FitLedger OS Lagos Anti-Theft Architecture._`;
 
     return NextResponse.json({
       success: true,

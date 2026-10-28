@@ -1384,7 +1384,7 @@ export default function OwnerPage() {
                 <div className="flex gap-2">
                   <a
                     href={`https://wa.me/234${member.phoneNumber.replace(/^0|\s+/g, '')}?text=${encodeURIComponent(
-                      `Hello ${member.fullName}! Coach Tunde and the FitLedger team noticed you haven't been in for a while. We miss you! Renew this week for 10% off: https://fitledger.ng/m/${member.memberCode}`
+                      `Hello ${member.fullName}! Coach and the ${activeTenant.name} team noticed you haven't been in for a while. We miss you! Renew this week for 10% off: ${(typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')}/m/${member.memberCode}`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -1661,7 +1661,8 @@ export default function OwnerPage() {
                           type="button"
                           onClick={() => {
                             const cleanPhone = m.phoneNumber.replace(/\D/g, '').replace(/^0/, '');
-                            const passUrl = `https://fitledger-v1.vercel.app/m/${m.memberCode}`;
+                            const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+                            const passUrl = `${origin}/m/${m.memberCode}`;
                             const msg = `*${activeTenant.name} — Official Gym Pass* 🏋️‍♂️\n\nHello ${m.fullName},\nYour digital barcode gym pass is active!\n\nPass Code: #${m.memberCode}\nExpiry: ${m.subscriptionEndDate}\n\nTap to open your pass on your phone:\n${passUrl}\n\n_Show this at reception counter for 2-second check-in!_`;
                             window.open(`https://api.whatsapp.com/send?phone=234${cleanPhone}&text=${encodeURIComponent(msg)}`, '_blank');
                           }}
