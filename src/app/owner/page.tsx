@@ -112,9 +112,8 @@ export default function OwnerPage() {
   const [planFormIsActive, setPlanFormIsActive] = useState<boolean>(true);
   const [planToast, setPlanToast] = useState<string | null>(null);
 
-  // Cloud Database Guide Modal & Clean Data Confirm State
+  // Cloud Database Guide Modal State
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
-  const [isWipeConfirmOpen, setIsWipeConfirmOpen] = useState(false);
 
   const openAddPlanModal = () => {
     setEditingPlan(null);
@@ -2976,63 +2975,7 @@ export default function OwnerPage() {
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* REAL DATA MODE: WIPE DEMO DATA CONFIRMATION MODAL               */}
-      {/* ============================================================== */}
-      {isWipeConfirmOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-amber-500/30 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scaleIn">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-base text-white">
-                  Switch to Clean Production Data
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  Ready to test with real gym members and live walk-ins
-                </p>
-              </div>
-            </div>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-xs space-y-2 text-zinc-300 leading-relaxed">
-              <p>
-                This will wipe all <strong>sample demo members</strong> (e.g. Abiodun, Chioma, Emeka), mock check-ins, and dummy shift transactions from this browser.
-              </p>
-              <p className="text-emerald-400 font-semibold">
-                ✓ Your gym settings, staff accounts, and custom membership pricing tiers will remain completely intact.
-              </p>
-              <p className="text-zinc-500 text-[11px]">
-                You can restore sample demo data at any time with the &ldquo;🔄 Restore Demo Data&rdquo; button.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsWipeConfirmOpen(false)}
-                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer text-xs font-bold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  clearMockData();
-                  setIsWipeConfirmOpen(false);
-                  setPlanToast('🧹 Mock data wiped clean! You are now in Real Data mode. All new registrations will persist.');
-                  setTimeout(() => setPlanToast(null), 5000);
-                }}
-                className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs transition shadow-lg shadow-amber-600/30 cursor-pointer flex items-center gap-2"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Wipe Mock Data & Start Clean</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ============================================================== */}
       {/* CLOUD DATABASE & PERSISTENCE ARCHITECTURE MODAL                */}

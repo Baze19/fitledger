@@ -168,18 +168,18 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   const isHydratedRef = useRef<boolean>(false);
 
-  // Storage keys for persistent real-data storage
+  // Storage keys for persistent real-data storage (v4 pristine production clean state)
   const STORAGE_KEYS = {
-    MEMBERS: 'fitledger_members_store_v3',
-    PLANS: 'fitledger_plans_store_v3',
-    TRANSACTIONS: 'fitledger_tx_store_v3',
-    CHECKINS: 'fitledger_checkins_store_v3',
-    EXPENSES: 'fitledger_expenses_store_v3',
-    SHIFT_CLOSEOUTS: 'fitledger_shift_closeouts_v3',
-    TENANTS: 'fitledger_tenants_store_v3',
-    OWNERS: 'fitledger_owners_store_v3',
-    STAFF: 'fitledger_staff_store_v3',
-    IS_DEMO: 'fitledger_is_demo_mode_v3',
+    MEMBERS: 'fitledger_members_store_v4',
+    PLANS: 'fitledger_plans_store_v4',
+    TRANSACTIONS: 'fitledger_tx_store_v4',
+    CHECKINS: 'fitledger_checkins_store_v4',
+    EXPENSES: 'fitledger_expenses_store_v4',
+    SHIFT_CLOSEOUTS: 'fitledger_shift_closeouts_v4',
+    TENANTS: 'fitledger_tenants_store_v4',
+    OWNERS: 'fitledger_owners_store_v4',
+    STAFF: 'fitledger_staff_store_v4',
+    IS_DEMO: 'fitledger_is_demo_mode_v4',
   };
 
   // Hydrate persistent state from browser storage on client mount
