@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod, ExpenseLog } from '@/types';
-import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES, INITIAL_EXPENSES } from '@/lib/mock-data';
+import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod, ExpenseLog, ShiftCloseout } from '@/types';
+import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES, INITIAL_EXPENSES, INITIAL_SHIFT_CLOSEOUTS } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { PlanTier, FeatureKey, canAccessFeature, getMaxMembersAllowed, PLAN_TIERS } from '@/lib/entitlements';
 import { FeatureGateModal } from '@/components/FeatureGateModal';
@@ -76,7 +76,8 @@ interface GymContextType {
   bulkImportMembers: (items: { fullName: string; phoneNumber: string; status: 'active' | 'expired'; currentPlanId: string; subscriptionEndDate: string; remainingPtSessions: number }[]) => { count: number; importedCodes: string[] };
   renewMember: (memberId: string, planId: string, paymentMethod: Transaction['paymentMethod']) => void;
   overrideExpiredEntry: (memberId: string, reason: string) => void;
-  closeShift: (cashCounted: number) => { discrepancy: number; isBalanced: boolean };
+  closeShift: (cashCounted: number, notes?: string, staffPin?: string) => { discrepancy: number; isBalanced: boolean; closeout: ShiftCloseout };
+  shiftCloseouts: ShiftCloseout[];
   switchStaff: (staffId: string, pin: string) => boolean;
   addStaff: (data: { fullName: string; phone: string; role: StaffUser['role']; pin: string }) => StaffUser;
   deactivateStaff: (staffId: string) => void;
@@ -137,6 +138,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     TRANSACTIONS: 'fitledger_tx_store_v2',
     CHECKINS: 'fitledger_checkins_store_v2',
     EXPENSES: 'fitledger_expenses_store_v2',
+    SHIFT_CLOSEOUTS: 'fitledger_shift_closeouts_v2',
     IS_DEMO: 'fitledger_is_demo_mode_v2',
   };
 
@@ -188,6 +190,14 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           setExpenses(parsed);
         }
       }
+
+      const savedCloseouts = localStorage.getItem(STORAGE_KEYS.SHIFT_CLOSEOUTS);
+      if (savedCloseouts) {
+        const parsed = JSON.parse(savedCloseouts);
+        if (Array.isArray(parsed)) {
+          setShiftCloseouts(parsed);
+        }
+      }
     } catch (e) {
       console.warn('LocalStorage hydration error:', e);
     }
@@ -203,6 +213,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const [retailItems, setRetailItems] = useState<RetailItem[]>(INITIAL_RETAIL_ITEMS);
   const [stockDeliveries, setStockDeliveries] = useState<StockDelivery[]>(INITIAL_STOCK_DELIVERIES);
   const [expenses, setExpenses] = useState<ExpenseLog[]>(INITIAL_EXPENSES);
+  const [shiftCloseouts, setShiftCloseouts] = useState<ShiftCloseout[]>(INITIAL_SHIFT_CLOSEOUTS);
 
   // Persist state updates to localStorage so real testing data never resets
   useEffect(() => {
@@ -239,6 +250,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
     } catch (e) {}
   }, [expenses]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.SHIFT_CLOSEOUTS, JSON.stringify(shiftCloseouts));
+    } catch (e) {}
+  }, [shiftCloseouts]);
 
   // Offline Resiliency State (NEPA Power Cuts & Router Glitches)
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
@@ -1227,6 +1245,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setCheckIns([]);
     setTransactions([]);
     setExpenses([]);
+    setShiftCloseouts([]);
     setIsDemoMode(false);
     if (typeof window !== 'undefined') {
       try {
@@ -1235,6 +1254,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.CHECKINS, JSON.stringify([]));
         localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
         localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEYS.SHIFT_CLOSEOUTS, JSON.stringify([]));
       } catch (e) {}
     }
     const audit: AuditLog = {
@@ -1243,7 +1263,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       timestamp: 'Just now',
       actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
       action: 'Clean Production Slate Activated',
-      details: `Cleared mock members and transactions. System is clean and ready for real customer registrations and shifts.`,
+      details: `Cleared mock members, transactions, and closeouts. System is clean and ready for real customer registrations and shifts.`,
       severity: 'info',
     };
     setAuditLogs((prev) => [audit, ...prev]);
@@ -1254,6 +1274,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setCheckIns(INITIAL_CHECKINS);
     setTransactions(INITIAL_TRANSACTIONS);
     setExpenses(INITIAL_EXPENSES);
+    setShiftCloseouts(INITIAL_SHIFT_CLOSEOUTS);
     setIsDemoMode(true);
     if (typeof window !== 'undefined') {
       try {
@@ -1262,6 +1283,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.CHECKINS, JSON.stringify(INITIAL_CHECKINS));
         localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(INITIAL_TRANSACTIONS));
         localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(INITIAL_EXPENSES));
+        localStorage.setItem(STORAGE_KEYS.SHIFT_CLOSEOUTS, JSON.stringify(INITIAL_SHIFT_CLOSEOUTS));
       } catch (e) {}
     }
     const audit: AuditLog = {
@@ -1765,10 +1787,34 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Shift Close
-  const closeShift = (cashCounted: number) => {
+  const closeShift = (cashCounted: number, notes?: string, staffPin?: string) => {
     const expectedTarget = shiftSummary.netCashExpected ?? (shiftSummary.cashExpected - (shiftSummary.drawerExpenses || 0));
     const discrepancy = cashCounted - expectedTarget;
     const isBalanced = discrepancy === 0;
+
+    const closeoutRecord: ShiftCloseout = {
+      id: `close_${Date.now()}`,
+      tenantId: activeTenant.id,
+      staffId: activeStaff.id,
+      staffName: activeStaff.fullName,
+      staffPinUsed: staffPin || activeStaff.pin || '5829',
+      closedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      totalRevenue: shiftSummary.totalRevenue,
+      cashExpected: expectedTarget,
+      cashActual: cashCounted,
+      cashDiscrepancy: discrepancy,
+      bankTransferTotal: shiftSummary.transferExpected,
+      posTotal: shiftSummary.posExpected,
+      paystackTotal: 0,
+      expensesTotal: shiftSummary.drawerExpenses || 0,
+      totalCheckIns: shiftSummary.totalCheckIns,
+      expiredPassesBlocked: shiftSummary.overridesCount || 0,
+      retailUnitsSold: retailItems.reduce((acc, r) => acc + (r.inStock < 20 ? 1 : 0), 0),
+      notes: notes || 'Standard shift handover and drawer closeout.',
+      status: isBalanced ? 'balanced' : discrepancy < 0 ? 'shortage' : 'surplus',
+    };
+
+    setShiftCloseouts((prev) => [closeoutRecord, ...prev]);
 
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
@@ -1776,7 +1822,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       timestamp: 'Just now',
       actorStaffName: activeStaff.fullName,
       action: 'Shift Closed & Reconciled',
-      details: `Shift closed by ${activeStaff.fullName}. Gross Cash: ₦${shiftSummary.cashExpected.toLocaleString()}, Less Drawer Expenses: -₦${(shiftSummary.drawerExpenses || 0).toLocaleString()}, Net Cash Expected: ₦${expectedTarget.toLocaleString()}, Counted: ₦${cashCounted.toLocaleString()}. Discrepancy: ₦${discrepancy.toLocaleString()}.`,
+      details: `Shift closed by ${activeStaff.fullName}. Gross Cash: ₦${shiftSummary.cashExpected.toLocaleString()}, Less Drawer Expenses: -₦${(shiftSummary.drawerExpenses || 0).toLocaleString()}, Net Cash Expected: ₦${expectedTarget.toLocaleString()}, Counted: ₦${cashCounted.toLocaleString()}. Discrepancy: ₦${discrepancy.toLocaleString()}. Status: ${closeoutRecord.status.toUpperCase()}`,
       severity: isBalanced ? 'info' : 'alert',
     };
     setAuditLogs((prev) => [audit, ...prev]);
@@ -1789,7 +1835,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           item_name: `Daily Close: ₦${cashCounted.toLocaleString()} counted (Variance: ₦${discrepancy.toLocaleString()})`,
           quantity: 1,
           amount_paid: cashCounted,
-          cashier_pin: activeStaff.pin || '2045',
+          cashier_pin: closeoutRecord.staffPinUsed,
           payment_method: isBalanced ? 'Cash Balanced' : 'Cash Shortage Alert',
         })
         .then(({ error }) => {
@@ -1803,7 +1849,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       isLocked: true,
     }));
 
-    return { discrepancy, isBalanced };
+    return { discrepancy, isBalanced, closeout: closeoutRecord };
   };
 
   // Shift Switch
@@ -1908,6 +1954,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         renewMember,
         overrideExpiredEntry,
         closeShift,
+        shiftCloseouts,
         switchStaff,
         addStaff,
         deactivateStaff,

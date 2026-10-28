@@ -1,4 +1,4 @@
-import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, ExpenseLog } from '@/types';
+import { Plan, Member, StaffUser, CheckIn, Transaction, AuditLog, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, ExpenseLog, ShiftCloseout } from '@/types';
 
 export const INITIAL_TENANTS: GymTenant[] = [
   {
@@ -770,6 +770,30 @@ export const INITIAL_EXPENSES: ExpenseLog[] = [
     staffPin: '4821',
     timestamp: '2026-10-27 08:30 AM',
     paidFromDrawer: true,
+  },
+];
+
+export const INITIAL_SHIFT_CLOSEOUTS: ShiftCloseout[] = [
+  {
+    id: 'close_001',
+    tenantId: 'tenant_fitflex',
+    staffId: 'staff_1',
+    staffName: 'Mary Okafor',
+    staffPinUsed: '5829',
+    closedAt: '2026-10-27 21:05',
+    totalRevenue: 135000,
+    cashExpected: 25000,
+    cashActual: 25000,
+    cashDiscrepancy: 0,
+    bankTransferTotal: 80000,
+    posTotal: 30000,
+    paystackTotal: 0,
+    expensesTotal: 15000,
+    totalCheckIns: 68,
+    expiredPassesBlocked: 4,
+    retailUnitsSold: 12,
+    notes: 'Evening shift closeout. ₦25,000 cash sealed in safe envelope for morning bank deposit.',
+    status: 'balanced',
   },
 ];
 

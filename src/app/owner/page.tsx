@@ -94,6 +94,7 @@ export default function OwnerPage() {
     isDemoMode,
     clearMockData,
     loadDemoData,
+    shiftCloseouts,
     isCloudConnected,
   } = useGym();
 
@@ -1436,6 +1437,118 @@ export default function OwnerPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* DAILY SHIFT CLOSEOUTS & Z-REPORT CASH LEDGER */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-extrabold text-sm text-white">
+                    Shift Closeouts & Daily Z-Report Cash Ledger
+                  </h3>
+                  <span className="text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Anti-Theft Protocol
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Every evening drawer settlement, counted cash sign-off, and cashier PIN reconciliation is permanently audited here.
+                </p>
+              </div>
+
+              <div className="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl text-[11px] text-zinc-400 font-mono">
+                Historical Closes: <strong className="text-white">{shiftCloseouts.filter((c) => !c.tenantId || c.tenantId === activeTenant.id).length} Shifts</strong>
+              </div>
+            </div>
+
+            {shiftCloseouts.filter((c) => !c.tenantId || c.tenantId === activeTenant.id).length === 0 ? (
+              <div className="p-8 text-center text-zinc-500 text-xs bg-zinc-950/40 rounded-2xl border border-zinc-800/60">
+                <p className="font-semibold text-zinc-400">No shift closeouts recorded yet for this gym branch.</p>
+                <p className="text-[11px] mt-1">Receptionists can close their shift and generate the owner Z-report at the Front Desk Terminal.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {shiftCloseouts
+                  .filter((c) => !c.tenantId || c.tenantId === activeTenant.id)
+                  .map((closeout) => {
+                    const isBalanced = closeout.status === 'balanced';
+                    const isShortage = closeout.status === 'shortage';
+                    
+                    const reportText = `🏋️ FITLEDGER DAILY Z-REPORT\nGym: ${activeTenant.name}\nDate: ${closeout.closedAt}\nStaff: ${closeout.staffName} (PIN: ${closeout.staffPinUsed})\nRevenue: ₦${closeout.totalRevenue.toLocaleString()}\nExpected Cash: ₦${closeout.cashExpected.toLocaleString()}\nCounted Cash: ₦${closeout.cashActual.toLocaleString()}\nVariance: ${closeout.cashDiscrepancy === 0 ? '₦0.00 (Balanced)' : `₦${closeout.cashDiscrepancy.toLocaleString()}`}\nNotes: ${closeout.notes || 'None'}`;
+                    
+                    const cleanPhone = (activeTenant.ownerPhone || '08023456789').replace(/\D/g, '');
+                    const intPhone = cleanPhone.startsWith('0') ? `234${cleanPhone.slice(1)}` : cleanPhone;
+                    const whatsAppUrl = `https://wa.me/${intPhone}?text=${encodeURIComponent(reportText)}`;
+
+                    return (
+                      <div
+                        key={closeout.id}
+                        className={`p-4 rounded-2xl border text-xs flex flex-col md:flex-row md:items-center justify-between gap-4 transition ${
+                          isBalanced
+                            ? 'bg-zinc-950 border-zinc-800'
+                            : isShortage
+                            ? 'bg-red-950/20 border-red-500/40'
+                            : 'bg-amber-950/20 border-amber-500/40'
+                        }`}
+                      >
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-black text-white text-sm">
+                              ₦{closeout.totalRevenue.toLocaleString()} Total Revenue
+                            </span>
+                            <span className="text-zinc-500">•</span>
+                            <span className="text-zinc-300 font-semibold">{closeout.closedAt}</span>
+                            {isBalanced ? (
+                              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" /> 100% Balanced (₦0.00 Leakage)
+                              </span>
+                            ) : isShortage ? (
+                              <span className="bg-red-500/20 text-red-400 border border-red-500/50 text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1 animate-pulse">
+                                <AlertTriangle className="w-3 h-3" /> CASH SHORTAGE: -₦{Math.abs(closeout.cashDiscrepancy).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                Surplus: +₦{closeout.cashDiscrepancy.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-zinc-400 text-[11px] font-mono">
+                            <span>Cash in Hand: <strong className="text-white">₦{closeout.cashActual.toLocaleString()}</strong></span>
+                            <span>Expected Cash: <span className="text-zinc-300">₦{closeout.cashExpected.toLocaleString()}</span></span>
+                            <span>Bank Transfers: <span className="text-blue-400">₦{closeout.bankTransferTotal.toLocaleString()}</span></span>
+                            <span>POS Card: <span className="text-purple-400">₦{closeout.posTotal.toLocaleString()}</span></span>
+                            {closeout.expensesTotal > 0 && (
+                              <span>Diesel/Expenses: <span className="text-amber-400">-₦{closeout.expensesTotal.toLocaleString()}</span></span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3 text-[11px] text-zinc-400">
+                            <span>Cashier: <strong className="text-zinc-200">{closeout.staffName}</strong> (PIN: <code className="text-amber-400 bg-zinc-900 px-1 py-0.5 rounded font-mono">{closeout.staffPinUsed}</code>)</span>
+                            {closeout.notes && (
+                              <span className="italic text-zinc-500">&ldquo;{closeout.notes}&rdquo;</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <a
+                            href={whatsAppUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer"
+                            title="Resend or view formatted Z-Report on WhatsApp"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>WhatsApp Z-Report</span>
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -207,3 +207,25 @@ export interface StockDelivery {
   timestamp: string;
   receivedByStaffName: string;
 }
+
+export interface ShiftCloseout {
+  id: string;
+  tenantId: string;
+  staffId: string;
+  staffName: string;
+  staffPinUsed: string;
+  closedAt: string;
+  totalRevenue: number;
+  cashExpected: number;
+  cashActual: number;
+  cashDiscrepancy: number; // 0 = balanced, < 0 = shortage, > 0 = surplus
+  bankTransferTotal: number;
+  posTotal: number;
+  paystackTotal: number;
+  expensesTotal: number;
+  totalCheckIns: number;
+  expiredPassesBlocked: number;
+  retailUnitsSold: number;
+  notes?: string;
+  status: 'balanced' | 'shortage' | 'surplus';
+}

@@ -84,7 +84,7 @@ export function ShiftCloseModal({ isOpen, onClose, onLockTerminal }: ShiftCloseM
       return;
     }
 
-    const res = closeShift(counted);
+    const res = closeShift(counted, closingNotes, enteredPin || activeStaff.pin);
     const nowTime = new Date().toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
