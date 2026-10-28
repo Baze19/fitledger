@@ -92,7 +92,7 @@ export default function SuperAdminPage() {
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-black tracking-tight text-white">FitLedger Founder HQ</h1>
                 <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  Super Admin • Abiodun Oludolapo
+                  Super Admin • Abiodun Oludolapo (abiodunoludolapo@gmail.com)
                 </span>
               </div>
               <p className="text-xs text-zinc-400">Multi-Tenant Platform Command Center • Lagos & West Africa Fleet</p>

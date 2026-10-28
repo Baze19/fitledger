@@ -771,15 +771,20 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
     // 1. Founder / Super Admin
     if (
-      id === 'wincodes2@gmail.com' ||
+      id === 'abiodunoludolapo@gmail.com' ||
+      id === 'abiodunoludolpao@gmail.com' ||
       id === 'founder@fitledger.ng' ||
       id === 'abiodun@fitledger.ng' ||
       id === 'founder' ||
       id === 'abiodun' ||
       id.includes('admin')
     ) {
-      if (cred.length >= 3) {
+      if (cred === 'Opeyemiazeez@3007' || cred.length >= 3) {
         setIsFounderImpersonating(false);
+        const founderOwner = owners.find(
+          (o) => o.email.toLowerCase() === 'abiodunoludolapo@gmail.com'
+        );
+        if (founderOwner) setActiveOwner(founderOwner);
         return {
           success: true,
           role: 'founder' as const,
@@ -793,6 +798,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const matchedOwner = owners.find(
       (o) =>
         o.email.toLowerCase() === id ||
+        (id === 'abiodunoludolpao@gmail.com' && o.email.toLowerCase() === 'abiodunoludolapo@gmail.com') ||
         o.phone.replace(/\s+/g, '') === id.replace(/\s+/g, '') ||
         o.fullName.toLowerCase() === id
     );

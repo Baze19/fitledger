@@ -88,9 +88,19 @@ export const INITIAL_RETAIL_ITEMS: RetailItem[] = [
   },
 ];
 
-// Pristine Empty State: 0 Mock Clutter
+// Pristine Operational State
 export const INITIAL_TENANTS: GymTenant[] = [];
-export const INITIAL_OWNERS: OwnerAccount[] = [];
+export const INITIAL_OWNERS: OwnerAccount[] = [
+  {
+    id: 'owner_abiodun',
+    tenantId: 'tenant_fitledger_hq',
+    fullName: 'Abiodun Oludolapo',
+    email: 'abiodunoludolapo@gmail.com',
+    phone: '08023456789',
+    password: 'Opeyemiazeez@3007',
+    role: 'owner',
+  },
+];
 export const INITIAL_MEMBERS: Member[] = [];
 export const INITIAL_STAFF: StaffUser[] = [];
 export const INITIAL_CHECKINS: CheckIn[] = [];

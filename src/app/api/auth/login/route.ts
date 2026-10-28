@@ -17,19 +17,22 @@ export async function POST(request: Request) {
 
     // 1. Founder / Super Admin
     if (
-      id === 'wincodes2@gmail.com' ||
+      id === 'abiodunoludolapo@gmail.com' ||
+      id === 'abiodunoludolpao@gmail.com' ||
       id === 'founder@fitledger.ng' ||
       id === 'abiodun@fitledger.ng' ||
+      id === 'abiodun' ||
+      id === 'founder' ||
       id.includes('admin')
     ) {
-      if (cred.length >= 3) {
+      if (cred === 'Opeyemiazeez@3007' || cred.length >= 3) {
         return NextResponse.json({
           success: true,
           role: 'founder',
           targetUrl: '/admin',
           user: {
             fullName: 'Abiodun Oludolapo',
-            email: 'wincodes2@gmail.com',
+            email: 'abiodunoludolapo@gmail.com',
             role: 'SUPER_ADMIN',
           },
           token: `jwt_founder_${Date.now()}`,

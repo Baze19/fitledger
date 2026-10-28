@@ -5,7 +5,7 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     platform: 'FitLedger OS Multi-Tenant Fleet',
-    founder: 'Abiodun Oludolapo (wincodes2@gmail.com)',
+    founder: 'Abiodun Oludolapo (abiodunoludolapo@gmail.com)',
     totalTenants: INITIAL_TENANTS.length,
     tenants: INITIAL_TENANTS,
   });

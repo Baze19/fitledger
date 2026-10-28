@@ -81,7 +81,13 @@ export default function LoginPage() {
     const cleanPhone = query.replace(/\s+/g, '');
 
     // Check if it's Founder
-    if (query === 'wincodes2@gmail.com' || query.includes('admin') || query === 'abiodun') {
+    if (
+      query === 'abiodunoludolapo@gmail.com' ||
+      query === 'abiodunoludolpao@gmail.com' ||
+      query.includes('admin') ||
+      query === 'abiodun' ||
+      query === 'founder@fitledger.ng'
+    ) {
       setMatchedOwnerName('Platform Founder (Abiodun Oludolapo)');
       setForgotStep('reset');
       return;
