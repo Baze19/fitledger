@@ -3,11 +3,14 @@ export type PlanType = 'daily' | 'monthly' | 'quarterly' | 'annual';
 
 export interface Plan {
   id: string;
+  tenantId?: string; // Multi-tenant gym isolation
   name: string;
   type: PlanType;
   price: number; // in NGN (Naira)
   durationDays: number;
   ptSessionsIncluded: number;
+  description?: string;
+  isActive?: boolean;
 }
 
 export interface Member {

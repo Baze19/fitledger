@@ -51,6 +51,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     shiftSummary,
     checkIns,
     plans,
+    activePlans,
     members,
     retailItems,
     sellRetailItem,
@@ -74,7 +75,14 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   // Registration Form State
   const [newFullName, setNewFullName] = useState('');
   const [newPhone, setNewPhone] = useState('');
-  const [newPlanId, setNewPlanId] = useState(plans[1]?.id || 'plan_monthly_std');
+  const [newPlanId, setNewPlanId] = useState(activePlans[1]?.id || activePlans[0]?.id || 'plan_monthly_std');
+
+  // Auto-sync plan ID if activePlans updates or switch tenant
+  React.useEffect(() => {
+    if (activePlans.length > 0 && !activePlans.some((p) => p.id === newPlanId)) {
+      setNewPlanId(activePlans[1]?.id || activePlans[0]?.id);
+    }
+  }, [activePlans, newPlanId]);
   const [newPaymentMethod, setNewPaymentMethod] = useState<Transaction['paymentMethod']>('bank_transfer');
   const [newPhotoUrl, setNewPhotoUrl] = useState<string>('');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -254,7 +262,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     e.preventDefault();
     if (!newFullName || !newPhone) return;
 
-    const plan = plans.find((p) => p.id === newPlanId) || plans[1];
+    const plan = activePlans.find((p) => p.id === newPlanId) || activePlans[0] || plans[0];
     const isDayPass = plan.id === 'plan_daily' || plan.durationDays === 1;
 
     // Check discount if referral code provided
@@ -810,11 +818,13 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                       onChange={(e) => setNewPlanId(e.target.value)}
                       className="w-full bg-zinc-950 border border-zinc-800 focus:border-red-500 rounded-xl p-2.5 text-white focus:outline-none"
                     >
-                      {plans.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} — ₦{p.price.toLocaleString()} ({p.durationDays}d)
-                        </option>
-                      ))}
+                      {activePlans
+                        .filter((p) => p.isActive !== false)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} — ₦{p.price.toLocaleString()} ({p.durationDays === 1 ? '1 day pass' : `${p.durationDays} days`})
+                          </option>
+                        ))}
                     </select>
                   </div>
 

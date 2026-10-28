@@ -47,6 +47,15 @@ interface GymContextType {
 
   members: Member[];
   plans: Plan[];
+  activePlans: Plan[];
+  addPlan: (data: Omit<Plan, 'id'>) => Plan;
+  updatePlan: (planId: string, updates: Partial<Omit<Plan, 'id'>>) => void;
+  deletePlan: (planId: string) => void;
+
+  // Real Data Testing Engine
+  isDemoMode: boolean;
+  clearMockData: () => void;
+  loadDemoData: () => void;
   staffList: StaffUser[];
   activeStaff: StaffUser;
   checkIns: CheckIn[];
@@ -113,7 +122,77 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const [isFounderImpersonating, setIsFounderImpersonating] = useState<boolean>(false);
 
   const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
-  const [plans] = useState<Plan[]>(INITIAL_PLANS);
+  const [plans, setPlans] = useState<Plan[]>(INITIAL_PLANS);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+
+  // Filter plans available for current active tenant (custom or default)
+  const activePlans = plans.filter(
+    (p) => (!p.tenantId || p.tenantId === activeTenant.id) && p.isActive !== false
+  );
+
+  // Storage keys for persistent real-data storage
+  const STORAGE_KEYS = {
+    MEMBERS: 'fitledger_members_store_v2',
+    PLANS: 'fitledger_plans_store_v2',
+    TRANSACTIONS: 'fitledger_tx_store_v2',
+    CHECKINS: 'fitledger_checkins_store_v2',
+    EXPENSES: 'fitledger_expenses_store_v2',
+    IS_DEMO: 'fitledger_is_demo_mode_v2',
+  };
+
+  // Hydrate persistent state from browser storage on client mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedIsDemo = localStorage.getItem(STORAGE_KEYS.IS_DEMO);
+      if (savedIsDemo !== null) {
+        setIsDemoMode(savedIsDemo === 'true');
+      }
+
+      const savedPlans = localStorage.getItem(STORAGE_KEYS.PLANS);
+      if (savedPlans) {
+        const parsed = JSON.parse(savedPlans);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setPlans(parsed);
+        }
+      }
+
+      const savedMembers = localStorage.getItem(STORAGE_KEYS.MEMBERS);
+      if (savedMembers) {
+        const parsed = JSON.parse(savedMembers);
+        if (Array.isArray(parsed)) {
+          setMembers(parsed);
+        }
+      }
+
+      const savedTx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      if (savedTx) {
+        const parsed = JSON.parse(savedTx);
+        if (Array.isArray(parsed)) {
+          setTransactions(parsed);
+        }
+      }
+
+      const savedCheckins = localStorage.getItem(STORAGE_KEYS.CHECKINS);
+      if (savedCheckins) {
+        const parsed = JSON.parse(savedCheckins);
+        if (Array.isArray(parsed)) {
+          setCheckIns(parsed);
+        }
+      }
+
+      const savedExpenses = localStorage.getItem(STORAGE_KEYS.EXPENSES);
+      if (savedExpenses) {
+        const parsed = JSON.parse(savedExpenses);
+        if (Array.isArray(parsed)) {
+          setExpenses(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('LocalStorage hydration error:', e);
+    }
+  }, []);
+
   const [staffList, setStaffList] = useState<StaffUser[]>(INITIAL_STAFF);
   const [activeStaff, setActiveStaff] = useState<StaffUser>(INITIAL_STAFF[0]); // Mary Okafor
   const [checkIns, setCheckIns] = useState<CheckIn[]>(INITIAL_CHECKINS);
@@ -124,6 +203,42 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const [retailItems, setRetailItems] = useState<RetailItem[]>(INITIAL_RETAIL_ITEMS);
   const [stockDeliveries, setStockDeliveries] = useState<StockDelivery[]>(INITIAL_STOCK_DELIVERIES);
   const [expenses, setExpenses] = useState<ExpenseLog[]>(INITIAL_EXPENSES);
+
+  // Persist state updates to localStorage so real testing data never resets
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
+    } catch (e) {}
+  }, [plans]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
+    } catch (e) {}
+  }, [members]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+    } catch (e) {}
+  }, [transactions]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.CHECKINS, JSON.stringify(checkIns));
+    } catch (e) {}
+  }, [checkIns]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+    } catch (e) {}
+  }, [expenses]);
 
   // Offline Resiliency State (NEPA Power Cuts & Router Glitches)
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
@@ -1052,6 +1167,115 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [audit, ...prev]);
   };
 
+  // Membership Plans & Pricing Management
+  const addPlan = (data: Omit<Plan, 'id'>) => {
+    const newPlan: Plan = {
+      ...data,
+      id: `plan_${Date.now()}`,
+      tenantId: data.tenantId || activeTenant.id,
+      isActive: data.isActive ?? true,
+    };
+    setPlans((prev) => [newPlan, ...prev]);
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
+      action: 'New Membership Plan Created',
+      details: `Created package "${newPlan.name}" priced at ₦${newPlan.price.toLocaleString()} (${newPlan.durationDays} days duration).`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+    return newPlan;
+  };
+
+  const updatePlan = (planId: string, updates: Partial<Omit<Plan, 'id'>>) => {
+    setPlans((prev) =>
+      prev.map((p) => (p.id === planId ? { ...p, ...updates } : p))
+    );
+    const target = plans.find((p) => p.id === planId);
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
+      action: 'Plan Price / Terms Updated',
+      details: `Updated "${updates.name || target?.name || planId}": Price set to ₦${(updates.price ?? target?.price ?? 0).toLocaleString()} (${updates.durationDays ?? target?.durationDays ?? 30} days).`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  const deletePlan = (planId: string) => {
+    const target = plans.find((p) => p.id === planId);
+    setPlans((prev) => prev.filter((p) => p.id !== planId));
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
+      action: 'Plan Removed',
+      details: `Deleted membership plan "${target?.name || planId}".`,
+      severity: 'warning',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  // Real Data Engine: Wipe Mock Data to Start Clean vs Reload Demo Data
+  const clearMockData = () => {
+    setMembers([]);
+    setCheckIns([]);
+    setTransactions([]);
+    setExpenses([]);
+    setIsDemoMode(false);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'false');
+        localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEYS.CHECKINS, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
+      } catch (e) {}
+    }
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
+      action: 'Clean Production Slate Activated',
+      details: `Cleared mock members and transactions. System is clean and ready for real customer registrations and shifts.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  const loadDemoData = () => {
+    setMembers(INITIAL_MEMBERS);
+    setCheckIns(INITIAL_CHECKINS);
+    setTransactions(INITIAL_TRANSACTIONS);
+    setExpenses(INITIAL_EXPENSES);
+    setIsDemoMode(true);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'true');
+        localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(INITIAL_MEMBERS));
+        localStorage.setItem(STORAGE_KEYS.CHECKINS, JSON.stringify(INITIAL_CHECKINS));
+        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(INITIAL_TRANSACTIONS));
+        localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(INITIAL_EXPENSES));
+      } catch (e) {}
+    }
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId: activeTenant.id,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
+      action: 'Demo Sample Data Restored',
+      details: `Restored sample gym members and historical transactions for presentation.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
   // Register Member
   const registerMember = (data: {
     fullName: string;
@@ -1061,7 +1285,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     photoUrl?: string;
     referralCode?: string;
   }) => {
-    const selectedPlan = plans.find((p) => p.id === data.planId) || plans[1];
+    const selectedPlan = plans.find((p) => p.id === data.planId) || activePlans[0] || plans[0];
     const isDayPass = selectedPlan.id === 'plan_daily' || selectedPlan.durationDays === 1;
 
     // Determine current date string in Lagos timezone (YYYY-MM-DD)
@@ -1661,6 +1885,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         updateOwnerPassword,
         members,
         plans,
+        activePlans,
+        addPlan,
+        updatePlan,
+        deletePlan,
+        isDemoMode,
+        clearMockData,
+        loadDemoData,
         staffList,
         activeStaff,
         checkIns,

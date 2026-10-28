@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useGym } from '@/context/gym-context';
+import { Plan, PlanType } from '@/types';
 import {
   TrendingUp,
   ShieldAlert,
@@ -40,6 +41,11 @@ import {
   SlidersHorizontal,
   FileSpreadsheet,
   Gift,
+  CreditCard,
+  Edit3,
+  Tag,
+  Database,
+  ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { BulkMemberImportModal } from '@/components/BulkMemberImportModal';
@@ -80,9 +86,94 @@ export default function OwnerPage() {
     hasFeature,
     openUpgradeModal,
     updateTenantReferralProgram,
+    plans,
+    activePlans,
+    addPlan,
+    updatePlan,
+    deletePlan,
+    isDemoMode,
+    clearMockData,
+    loadDemoData,
+    isCloudConnected,
   } = useGym();
 
-  const [activeTab, setActiveTab] = useState<'finance' | 'inventory' | 'trainers' | 'churn' | 'staff' | 'members' | 'whatsapp' | 'referrals'>('finance');
+  const [activeTab, setActiveTab] = useState<'finance' | 'plans' | 'inventory' | 'trainers' | 'churn' | 'staff' | 'members' | 'whatsapp' | 'referrals'>('finance');
+
+  // Plan Modal & Pricing Management State
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [planFormName, setPlanFormName] = useState('');
+  const [planFormType, setPlanFormType] = useState<PlanType>('monthly');
+  const [planFormPrice, setPlanFormPrice] = useState<number>(30000);
+  const [planFormDuration, setPlanFormDuration] = useState<number>(30);
+  const [planFormPtSessions, setPlanFormPtSessions] = useState<number>(0);
+  const [planFormDescription, setPlanFormDescription] = useState<string>('');
+  const [planFormIsActive, setPlanFormIsActive] = useState<boolean>(true);
+  const [planToast, setPlanToast] = useState<string | null>(null);
+
+  // Cloud Database Guide Modal & Clean Data Confirm State
+  const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
+  const [isWipeConfirmOpen, setIsWipeConfirmOpen] = useState(false);
+
+  const openAddPlanModal = () => {
+    setEditingPlan(null);
+    setPlanFormName('');
+    setPlanFormType('monthly');
+    setPlanFormPrice(30000);
+    setPlanFormDuration(30);
+    setPlanFormPtSessions(0);
+    setPlanFormDescription('');
+    setPlanFormIsActive(true);
+    setIsPlanModalOpen(true);
+  };
+
+  const openEditPlanModal = (p: Plan) => {
+    setEditingPlan(p);
+    setPlanFormName(p.name);
+    setPlanFormType(p.type);
+    setPlanFormPrice(p.price);
+    setPlanFormDuration(p.durationDays);
+    setPlanFormPtSessions(p.ptSessionsIncluded || 0);
+    setPlanFormDescription(p.description || '');
+    setPlanFormIsActive(p.isActive !== false);
+    setIsPlanModalOpen(true);
+  };
+
+  const handleSavePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!planFormName.trim() || planFormPrice <= 0 || planFormDuration <= 0) {
+      alert('Please enter a valid plan name, price, and duration.');
+      return;
+    }
+
+    if (editingPlan) {
+      updatePlan(editingPlan.id, {
+        name: planFormName.trim(),
+        type: planFormType,
+        price: Number(planFormPrice),
+        durationDays: Number(planFormDuration),
+        ptSessionsIncluded: Number(planFormPtSessions),
+        description: planFormDescription.trim(),
+        isActive: planFormIsActive,
+      });
+      setPlanToast(`✓ Plan "${planFormName}" updated! Price set to ₦${Number(planFormPrice).toLocaleString()}.`);
+    } else {
+      addPlan({
+        tenantId: activeTenant.id,
+        name: planFormName.trim(),
+        type: planFormType,
+        price: Number(planFormPrice),
+        durationDays: Number(planFormDuration),
+        ptSessionsIncluded: Number(planFormPtSessions),
+        description: planFormDescription.trim(),
+        isActive: planFormIsActive,
+      });
+      setPlanToast(`✓ New membership tier "${planFormName}" created at ₦${Number(planFormPrice).toLocaleString()}!`);
+    }
+
+    setIsPlanModalOpen(false);
+    setTimeout(() => setPlanToast(null), 4000);
+  };
 
   // Referral Program Management State
   const [refEnabled, setRefEnabled] = useState(activeTenant.referralProgram?.enabled ?? true);
@@ -293,8 +384,41 @@ export default function OwnerPage() {
           </div>
         </div>
 
-        {/* Global Navigation Shortcuts */}
-        <div className="flex items-center gap-2 text-xs font-bold">
+        {/* Global Navigation & Data Engine Shortcuts */}
+        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+          {/* Cloud Database Status */}
+          <button
+            type="button"
+            onClick={() => setIsDatabaseModalOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer text-zinc-300 transition"
+            title="Inspect Database Connectivity & Cloud PostgreSQL Sync"
+          >
+            <Database className="w-3.5 h-3.5 text-blue-400" />
+            <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`}></span>
+            <span>{isCloudConnected ? 'Cloud PostgreSQL' : 'Local Storage Engine'}</span>
+          </button>
+
+          {/* Real Data vs Demo Data Toggle */}
+          {isDemoMode ? (
+            <button
+              type="button"
+              onClick={() => setIsWipeConfirmOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95"
+              title="Clear sample members and test with your real gym customers"
+            >
+              <span>🧹 Wipe Mock Data (Test Real)</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={loadDemoData}
+              className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95"
+              title="Reload sample demo members and shifts for testing"
+            >
+              <span>🔄 Restore Demo Data</span>
+            </button>
+          )}
+
           <Link
             href="/terminal"
             className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition flex items-center gap-1.5"
@@ -333,6 +457,18 @@ export default function OwnerPage() {
           1. Financials & Anti-Fake Alert
         </button>
         <button
+          onClick={() => setActiveTab('plans')}
+          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'plans' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+          <span>2. Plans & Pricing</span>
+          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">
+            {activePlans.length}
+          </span>
+        </button>
+        <button
           onClick={() => {
             if (!hasFeature('ptTrainerScheduling')) {
               openUpgradeModal('ptTrainerScheduling');
@@ -345,7 +481,7 @@ export default function OwnerPage() {
           }`}
         >
           <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
-          <span>2. PT Commissions</span>
+          <span>3. PT Commissions</span>
           {!hasFeature('ptTrainerScheduling') ? (
             <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
               🔒 Growth
@@ -361,7 +497,7 @@ export default function OwnerPage() {
           }`}
         >
           <Package className="w-3.5 h-3.5 text-blue-400" />
-          <span>3. Pro-Shop & Inventory</span>
+          <span>4. Pro-Shop & Inventory</span>
           {lowStockCount > 0 ? (
             <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
               {lowStockCount} Low
@@ -377,7 +513,7 @@ export default function OwnerPage() {
           }`}
         >
           <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-          <span>4. At-Risk Churn Radar</span>
+          <span>5. At-Risk Churn Radar</span>
           <span className="bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded-full text-[10px] font-bold">{atRiskMembers.length}</span>
         </button>
         <button
@@ -386,7 +522,7 @@ export default function OwnerPage() {
             activeTab === 'staff' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
           }`}
         >
-          <span>5. Staff & Shift PINs</span>
+          <span>6. Staff & Shift PINs</span>
           <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{staffList.length}</span>
         </button>
         <button
@@ -395,7 +531,7 @@ export default function OwnerPage() {
             activeTab === 'members' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
           }`}
         >
-          <span>6. Member Directory</span>
+          <span>7. Member Directory</span>
           <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{members.length}</span>
         </button>
         <button
@@ -405,7 +541,7 @@ export default function OwnerPage() {
           }`}
         >
           <Bot className="w-3.5 h-3.5 text-purple-400" />
-          <span>7. WhatsApp AI Auditor</span>
+          <span>8. WhatsApp AI Auditor</span>
         </button>
         <button
           onClick={() => setActiveTab('referrals')}
@@ -414,7 +550,7 @@ export default function OwnerPage() {
           }`}
         >
           <Gift className="w-3.5 h-3.5 text-purple-400" />
-          <span>8. Viral & Referral Engine</span>
+          <span>9. Viral & Referral Engine</span>
           {activeTenant.referralProgram?.enabled ? (
             <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded-full text-[9px] font-bold">
               Active
@@ -435,7 +571,7 @@ export default function OwnerPage() {
           className="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-white border border-dashed border-purple-500/40 hover:border-purple-500/80 bg-purple-950/20"
         >
           <Lock className="w-3.5 h-3.5 text-purple-400" />
-          <span>9. Turnstile Barriers</span>
+          <span>10. Turnstile Barriers</span>
           <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
             Enterprise
           </span>
@@ -627,7 +763,196 @@ export default function OwnerPage() {
       )}
 
       {/* ============================================================== */}
-      {/* TAB 2: PERSONAL TRAINER (PT) COMMISSIONS & SPLITS              */}
+      {/* TAB 2: MEMBERSHIP PLANS & PRICING ARCHITECTURE                 */}
+      {/* ============================================================== */}
+      {activeTab === 'plans' && (
+        <div className="space-y-6">
+          {planToast && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-2xl text-xs font-bold flex items-center justify-between animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>{planToast}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPlanToast(null)}
+                className="text-emerald-400/70 hover:text-emerald-300 font-bold ml-4"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Header Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900 border border-zinc-800 p-5 rounded-3xl">
+            <div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-base font-black text-white">
+                  Membership Plans & Pricing Architecture
+                </h2>
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                  {activeTenant.name} Rates
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                Configure your gym&apos;s custom membership subscription packages, walk-in day pass rates, and VIP tiers. All pricing updates sync immediately to the Front Desk Terminal and Kiosk.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openAddPlanModal}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer flex-shrink-0"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Create Membership Tier</span>
+            </button>
+          </div>
+
+          {/* Pricing Telemetry Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Active Pricing Tiers
+              </span>
+              <p className="text-2xl font-black text-white font-mono">
+                {activePlans.filter((p) => p.isActive !== false).length} <span className="text-xs text-zinc-400 font-normal">Plans</span>
+              </p>
+              <span className="text-[11px] text-zinc-400 block">Available at reception desk</span>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Daily Walk-In Rate
+              </span>
+              <p className="text-2xl font-black text-blue-400 font-mono">
+                ₦{(activePlans.find((p) => p.type === 'daily' || p.durationDays === 1)?.price || 0).toLocaleString()}
+              </p>
+              <span className="text-[11px] text-zinc-400 block">Per single gym visit</span>
+            </div>
+
+            <div className="bg-zinc-900 border border-emerald-500/30 p-4 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                Standard Monthly Pass
+              </span>
+              <p className="text-2xl font-black text-emerald-400 font-mono">
+                ₦{(activePlans.find((p) => p.type === 'monthly' && p.durationDays === 30)?.price || activePlans.find((p) => p.type === 'monthly')?.price || 0).toLocaleString()}
+              </p>
+              <span className="text-[11px] text-emerald-400/80 block">30 days full gym floor access</span>
+            </div>
+
+            <div className="bg-zinc-900 border border-amber-500/30 p-4 rounded-3xl space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                Highest VIP Tier
+              </span>
+              <p className="text-2xl font-black text-amber-400 font-mono">
+                ₦{Math.max(...activePlans.map((p) => p.price), 0).toLocaleString()}
+              </p>
+              <span className="text-[11px] text-amber-300/80 block">Premium bundle / quarterly / VIP</span>
+            </div>
+          </div>
+
+          {/* Pricing Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activePlans.map((plan) => {
+              const isInactive = plan.isActive === false;
+              return (
+                <div
+                  key={plan.id}
+                  className={`border rounded-3xl p-5 flex flex-col justify-between space-y-4 transition ${
+                    isInactive
+                      ? 'bg-zinc-950/60 border-zinc-800/60 opacity-60'
+                      : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/60 inline-block mb-1.5">
+                          {plan.type.toUpperCase()}
+                        </span>
+                        <h3 className="text-base font-extrabold text-white leading-snug">
+                          {plan.name}
+                        </h3>
+                      </div>
+                      {isInactive ? (
+                        <span className="bg-zinc-800 text-zinc-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-zinc-700">
+                          Inactive
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Active
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="py-2 border-y border-zinc-800/80">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xs text-zinc-400 font-bold">₦</span>
+                        <span className="text-3xl font-black text-white font-mono tracking-tight">
+                          {plan.price.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-zinc-500 font-medium">
+                          / {plan.durationDays === 1 ? '1 day' : `${plan.durationDays} days`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-zinc-300">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <span>Valid for <strong>{plan.durationDays} calendar days</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Dumbbell className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        <span>
+                          {plan.ptSessionsIncluded && plan.ptSessionsIncluded > 0
+                            ? `Includes ${plan.ptSessionsIncluded} Personal Training Session${plan.ptSessionsIncluded > 1 ? 's' : ''}`
+                            : 'Floor access (PT booked separately)'}
+                        </span>
+                      </div>
+                      {plan.description && (
+                        <p className="text-[11px] text-zinc-400 pt-1 leading-relaxed italic">
+                          &ldquo;{plan.description}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-zinc-800/60">
+                    <button
+                      type="button"
+                      onClick={() => openEditPlanModal(plan)}
+                      className="flex-1 py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Edit Price & Terms</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete the plan "${plan.name}"?`)) {
+                          deletePlan(plan.id);
+                          setPlanToast(`Plan "${plan.name}" deleted.`);
+                          setTimeout(() => setPlanToast(null), 3000);
+                        }
+                      }}
+                      className="p-2 rounded-xl bg-zinc-800/80 hover:bg-red-950/60 text-zinc-400 hover:text-red-300 border border-zinc-700 hover:border-red-900/60 transition cursor-pointer"
+                      title="Delete Plan"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB 3: PERSONAL TRAINER (PT) COMMISSIONS & SPLITS              */}
       {/* ============================================================== */}
       {activeTab === 'trainers' && (
         <div className="space-y-6">
@@ -2339,6 +2664,339 @@ export default function OwnerPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
       />
+
+      {/* ============================================================== */}
+      {/* PLAN ADD / EDIT MODAL                                          */}
+      {/* ============================================================== */}
+      {isPlanModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl animate-scaleIn max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-extrabold text-base text-white">
+                  {editingPlan ? 'Edit Membership Plan & Pricing' : 'Create New Membership Plan'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPlanModalOpen(false)}
+                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePlan} className="space-y-4 text-xs">
+              <div>
+                <label className="font-semibold text-zinc-300 block mb-1">
+                  Plan Name (e.g. Standard Monthly, Student Pass, VIP Annual)
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Standard Monthly Gym Access"
+                  value={planFormName}
+                  onChange={(e) => setPlanFormName(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Plan Category</label>
+                  <select
+                    value={planFormType}
+                    onChange={(e) => setPlanFormType(e.target.value as PlanType)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="daily">Daily Walk-In</option>
+                    <option value="monthly">Monthly Subscription</option>
+                    <option value="quarterly">Quarterly Pass (3 Mo)</option>
+                    <option value="annual">Annual VIP (12 Mo)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Selling Price in Naira (₦)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-zinc-500 font-bold">₦</span>
+                    <input
+                      type="number"
+                      required
+                      min="100"
+                      step="100"
+                      value={planFormPrice}
+                      onChange={(e) => setPlanFormPrice(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-8 pr-3 py-2.5 text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Duration (Calendar Days)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={planFormDuration}
+                    onChange={(e) => setPlanFormDuration(Number(e.target.value))}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-[10px] text-zinc-500 mt-1 block">
+                    1 for daily pass, 30 for monthly, 90 for quarterly, 365 for annual
+                  </span>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">
+                    Included PT Sessions
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={planFormPtSessions}
+                    onChange={(e) => setPlanFormPtSessions(Number(e.target.value))}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-[10px] text-zinc-500 mt-1 block">
+                    0 if standard gym-only; &gt; 0 for personal trainer bundle
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-zinc-300 block mb-1">
+                  Plan Description & Benefits (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Free gym floor access, locker access, shower, 1 complimentary trainer assessment"
+                  value={planFormDescription}
+                  onChange={(e) => setPlanFormDescription(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="planIsActive"
+                  checked={planFormIsActive}
+                  onChange={(e) => setPlanFormIsActive(e.target.checked)}
+                  className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+                <label htmlFor="planIsActive" className="text-zinc-300 font-semibold cursor-pointer">
+                  Active & Visible for registration at Front Desk Terminal
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsPlanModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{editingPlan ? 'Save Plan Changes' : 'Create Plan Tier'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* REAL DATA MODE: WIPE DEMO DATA CONFIRMATION MODAL               */}
+      {/* ============================================================== */}
+      {isWipeConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-amber-500/30 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scaleIn">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-white">
+                  Switch to Clean Production Data
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Ready to test with real gym members and live walk-ins
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-xs space-y-2 text-zinc-300 leading-relaxed">
+              <p>
+                This will wipe all <strong>sample demo members</strong> (e.g. Abiodun, Chioma, Emeka), mock check-ins, and dummy shift transactions from this browser.
+              </p>
+              <p className="text-emerald-400 font-semibold">
+                ✓ Your gym settings, staff accounts, and custom membership pricing tiers will remain completely intact.
+              </p>
+              <p className="text-zinc-500 text-[11px]">
+                You can restore sample demo data at any time with the &ldquo;🔄 Restore Demo Data&rdquo; button.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsWipeConfirmOpen(false)}
+                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearMockData();
+                  setIsWipeConfirmOpen(false);
+                  setPlanToast('🧹 Mock data wiped clean! You are now in Real Data mode. All new registrations will persist.');
+                  setTimeout(() => setPlanToast(null), 5000);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs transition shadow-lg shadow-amber-600/30 cursor-pointer flex items-center gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Wipe Mock Data & Start Clean</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* CLOUD DATABASE & PERSISTENCE ARCHITECTURE MODAL                */}
+      {/* ============================================================== */}
+      {isDatabaseModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl animate-scaleIn max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <Database className="w-5 h-5 text-blue-400" />
+                <div>
+                  <h3 className="font-extrabold text-base text-white">
+                    FitLedger Data Persistence & Cloud Architecture
+                  </h3>
+                  <span className="text-[11px] text-zinc-400">
+                    Local-First Browser Engine + Supabase Cloud PostgreSQL
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDatabaseModalOpen(false)}
+                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Architecture Layer 1: Local-First */}
+              <div className="bg-zinc-900 border border-emerald-500/30 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h4 className="font-bold text-white text-sm">
+                      Layer 1: Local-First Offline Engine (ACTIVE)
+                    </h4>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Running Live
+                  </span>
+                </div>
+                <p className="text-zinc-300 leading-relaxed">
+                  All real members registered, custom pricing plans created, cash transactions recorded, and barcode scans are <strong>saved locally in browser persistent storage</strong>. They survive page refreshes, power cuts, and browser restarts.
+                </p>
+                <div className="flex items-center gap-4 text-[11px] text-zinc-400 pt-1 font-mono">
+                  <span>• Members: <strong className="text-white">{members.length}</strong></span>
+                  <span>• Pricing Tiers: <strong className="text-white">{activePlans.length}</strong></span>
+                  <span>• Check-ins: <strong className="text-white">{checkIns.length}</strong></span>
+                </div>
+              </div>
+
+              {/* Architecture Layer 2: Supabase Cloud PostgreSQL */}
+              <div className="bg-zinc-900 border border-blue-500/30 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-blue-400" />
+                    <h4 className="font-bold text-white text-sm">
+                      Layer 2: Cloud Database (Supabase PostgreSQL)
+                    </h4>
+                  </div>
+                  <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Pan-African Multi-Branch Sync
+                  </span>
+                </div>
+                <p className="text-zinc-300 leading-relaxed">
+                  For cross-device synchronization between front-desk tablets, manager laptops, and the Owner Suite across multiple branch locations (Lekki, Ikeja, Surulere, Abuja), configure your Supabase project credentials in <code className="bg-zinc-950 px-1.5 py-0.5 rounded text-zinc-200">.env.local</code>:
+                </p>
+
+                <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-xl font-mono text-[11px] text-zinc-300 space-y-1">
+                  <p className="text-zinc-500"># In .env.local on your server / Vercel</p>
+                  <p><span className="text-blue-400">NEXT_PUBLIC_SUPABASE_URL</span>=https://your-project.supabase.co</p>
+                  <p><span className="text-blue-400">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</p>
+                </div>
+              </div>
+
+              {/* Ready Table Checklist */}
+              <div className="border border-zinc-800 rounded-2xl p-4 space-y-2 bg-zinc-900/60">
+                <h5 className="font-bold text-white text-xs uppercase tracking-wider">
+                  Supported PostgreSQL Schema Tables
+                </h5>
+                <div className="grid grid-cols-2 gap-2 text-zinc-400 font-mono text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>gym_tenants (Multi-branch)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>membership_plans</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>members & barcode_tokens</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>attendance_logs</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>pos_transactions (Bank/Cash)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>staff_pins & audit_trail</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-2 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setIsDatabaseModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition cursor-pointer"
+              >
+                Close Guide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
