@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useGym } from '@/context/gym-context';
 import {
   ShieldCheck,
   Dumbbell,
@@ -39,6 +40,9 @@ import {
 } from 'lucide-react';
 
 export default function CommercialLandingPage() {
+  const { tenants, checkIns } = useGym();
+  const latestCheckIn = checkIns && checkIns.length > 0 ? checkIns[0] : null;
+
   // Interactive ROI Calculator State
   const [memberCount, setMemberCount] = useState(250);
   const [avgFee, setAvgFee] = useState(30000);
@@ -111,43 +115,65 @@ export default function CommercialLandingPage() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-red-500 selection:text-white">
       
       {/* ============================================================== */}
-      {/* 1. TOP LIVE TICKER BAR (Animated Lagos Telemetry)              */}
+      {/* 1. ENTERPRISE INFRASTRUCTURE TELEMETRY & NETWORK HEALTH BAR    */}
       {/* ============================================================== */}
-      <div className="bg-zinc-900/90 border-b border-zinc-800 text-[11px] py-1.5 px-4 overflow-hidden relative">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div className="bg-zinc-900/95 border-b border-zinc-800 text-[11px] py-2 px-4 overflow-hidden relative backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+          {/* Live Infrastructure Status */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="font-extrabold text-emerald-400 uppercase tracking-wider text-[10px]">
-              Live Lagos Fleet
+            <span className="font-extrabold text-emerald-400 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+              <span>FitLedger OS</span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-zinc-300 font-semibold">Platform Active</span>
             </span>
           </div>
-          <div className="flex-1 overflow-x-auto whitespace-nowrap scrollbar-none text-zinc-400 flex items-center gap-6 text-[11px]">
+
+          {/* Dynamic Infrastructure Telemetry */}
+          <div className="flex-1 overflow-x-auto whitespace-nowrap scrollbar-none text-zinc-400 flex items-center gap-4 sm:gap-6 text-[11px]">
             <span className="flex items-center gap-1.5">
-              <span className="text-zinc-500">12s ago:</span>
-              <span className="text-zinc-200 font-semibold">VIP Member #124253</span>
-              <span>checked into FitLedger Ikorodu (Turnstile Opened)</span>
+              <Building className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+              <span className="text-zinc-200 font-semibold">{tenants.length} Commercial Branches Operational</span>
+              <span className="text-zinc-500 text-[10px]">(Multi-Branch Ready)</span>
             </span>
-            <span className="text-zinc-700">•</span>
+
+            <span className="text-zinc-700 hidden sm:inline">•</span>
+
             <span className="flex items-center gap-1.5">
-              <span className="text-zinc-500">45s ago:</span>
-              <span className="text-emerald-400 font-semibold">₦45,000 Annual Transfer</span>
-              <span>verified via Monnify at IronBase Lekki</span>
+              <Zap className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              <span className="text-zinc-300 font-medium">Direct Bank Settlement:</span>
+              <span className="text-emerald-400 font-bold">Providus & Monnify API Connected</span>
             </span>
-            <span className="text-zinc-700">•</span>
+
+            <span className="text-zinc-700 hidden sm:inline">•</span>
+
             <span className="flex items-center gap-1.5">
-              <span className="text-zinc-500">2m ago:</span>
-              <span className="text-red-400 font-semibold">Expired Pass Flagged</span>
-              <span>at Hardcore Surulere (Cash leakage blocked)</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+              <span className="text-zinc-300 font-medium">Offline Resilience:</span>
+              <span className="text-zinc-400 font-mono">Zero-Latency Fallback Engine</span>
             </span>
-            <span className="text-zinc-700">•</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-zinc-500">5m ago:</span>
-              <span className="text-purple-400 font-semibold">WhatsApp AI Closing Summary</span>
-              <span>delivered to Chief Tunde (₦310k today)</span>
-            </span>
+
+            {latestCheckIn && (
+              <>
+                <span className="text-zinc-700 hidden md:inline">•</span>
+                <span className="flex items-center gap-1.5 hidden md:flex">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                  <span className="text-zinc-400">Latest Scan:</span>
+                  <span className="text-zinc-200 font-mono font-semibold">Pass #{latestCheckIn.memberCode.slice(0, 3)}•••</span>
+                  <span className="text-emerald-400 font-bold">Access Granted</span>
+                  <span className="text-zinc-500 text-[10px]">({latestCheckIn.timestamp})</span>
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Enterprise Sentry Uptime Badge */}
+          <div className="hidden lg:flex items-center gap-2 flex-shrink-0 text-[10px] text-zinc-400 bg-zinc-950 border border-zinc-800/80 px-2.5 py-1 rounded-full font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>99.98% System Uptime</span>
           </div>
         </div>
       </div>
