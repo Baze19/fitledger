@@ -31,7 +31,7 @@ function CheckInContent() {
 
   const [inputVal, setInputVal] = useState('');
   const [result, setResult] = useState<{
-    status: 'success' | 'expired' | 'not_found' | 'idle';
+    status: 'success' | 'expired' | 'cross_tenant' | 'not_found' | 'idle';
     message: string;
     member?: any;
   }>({ status: 'idle', message: '' });
@@ -96,6 +96,13 @@ function CheckInContent() {
         member: res.member,
       });
       setInputVal('');
+    } else if (res.reason === 'CROSS_TENANT_UNAUTHORIZED') {
+      playChime('error');
+      setResult({
+        status: 'cross_tenant',
+        message: `Member is registered at a different gym branch. Access to ${activeTenant.name} requires a Multi-Club Roaming Pass.`,
+        member: res.member,
+      });
     } else if (res.reason === 'EXPIRED' || res.reason === 'EXPIRED_DAY_PASS') {
       playChime('error');
       setResult({
@@ -117,8 +124,10 @@ function CheckInContent() {
     handleCheckIn(inputVal);
   };
 
-  // Sample quick test members for instant mobile verification
-  const quickMembers = members.slice(0, 3);
+  // Sample quick test members strictly belonging to this gym
+  const quickMembers = members
+    .filter((m) => !m.tenantId || m.tenantId === activeTenant.id)
+    .slice(0, 3);
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col justify-between p-4 sm:p-6 font-sans">
@@ -191,6 +200,20 @@ function CheckInContent() {
                 Renew via Paystack Online
               </Link>
             </div>
+          </div>
+        )}
+
+        {result.status === 'cross_tenant' && (
+          <div className="bg-red-950/60 border-2 border-red-500 rounded-3xl p-5 text-center space-y-3 shadow-2xl animate-shake">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <span className="bg-red-500/20 text-red-400 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-red-500/40">
+              Cross-Branch Access Denied
+            </span>
+            <h3 className="text-lg font-black text-white mt-1">Belongs to Another Gym</h3>
+            <p className="text-xs text-zinc-300 leading-relaxed">{result.message}</p>
+            <p className="text-[11px] text-zinc-500">
+              FitLedger tenant isolation protects member rosters and prevents unbilled club roaming.
+            </p>
           </div>
         )}
 

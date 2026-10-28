@@ -1120,7 +1120,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                 </p>
                 <div className="pt-1">
                   <span className="text-[11px] text-emerald-400 font-mono bg-zinc-950 px-3 py-1 rounded-full border border-zinc-800 inline-block font-semibold">
-                    ● Live URL: {typeof window !== 'undefined' ? `${window.location.origin}/checkin` : 'fitledger-v1.vercel.app/checkin'}
+                    ● Live Kiosk URL: {typeof window !== 'undefined' ? `${window.location.origin}/checkin?gym=${activeTenant.slug || activeTenant.id}` : `fitledger.ng/checkin?gym=${activeTenant.slug || activeTenant.id}`}
                   </span>
                 </div>
               </div>

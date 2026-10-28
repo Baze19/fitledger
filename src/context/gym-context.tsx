@@ -1195,6 +1195,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       return { success: false, reason: 'Member not found' };
     }
 
+    // Multi-Tenant Isolation: Ensure member belongs to this specific gym branch
+    if (found.tenantId && found.tenantId !== activeTenant.id) {
+      const homeGym = tenants.find((t) => t.id === found.tenantId);
+      const homeGymName = homeGym ? homeGym.name : 'another gym branch';
+      const newCheckIn: CheckIn = {
+        id: `chk_${Date.now()}`,
+        tenantId: activeTenant.id,
+        memberId: found.id,
+        memberCode: found.memberCode,
+        memberName: found.fullName,
+        timestamp: 'Just now',
+        method,
+        status: 'denied',
+        denialReason: `Cross-Branch Denied: Member registered with ${homeGymName}`,
+        verifiedByStaffName: activeStaff.fullName || 'System Turnstile',
+      };
+      setCheckIns((prev) => [newCheckIn, ...prev]);
+      setActiveScanResult({
+        member: found,
+        status: 'denied',
+        message: `Cross-Branch Denied: Member is registered with ${homeGymName}. Access to ${activeTenant.name} requires an Enterprise Multi-Club Pass.`,
+      });
+      return { success: false, member: found, reason: 'CROSS_TENANT_UNAUTHORIZED' };
+    }
+
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const isDayPass = found.currentPlanId === 'plan_daily' || found.memberCode.startsWith('DAY-');
@@ -1683,6 +1708,16 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const found = members.find((m) => m.id === memberIdOrCode || m.memberCode === memberIdOrCode);
     if (!found) {
       return { success: false, message: 'Member pass not found. Please contact the front desk.' };
+    }
+
+    // Multi-tenant check
+    if (found.tenantId && found.tenantId !== activeTenant.id) {
+      const homeGym = tenants.find((t) => t.id === found.tenantId);
+      const homeGymName = homeGym ? homeGym.name : 'another gym branch';
+      return {
+        success: false,
+        message: `Cross-Branch Denied: Your pass is registered at ${homeGymName}. Multi-branch access requires Enterprise roaming.`,
+      };
     }
 
     if (found.status === 'expired') {

@@ -16,10 +16,15 @@ import Link from 'next/link';
 
 function MemberPassContent() {
   const params = useParams();
-  const code = (params?.code as string) || '124253';
-  const { members, renewMember, activeTenant, updateMemberPhoto, recordSelfCheckIn } = useGym();
+  const code = (params?.code as string) || '';
+  const { members, renewMember, activeTenant, tenants, updateMemberPhoto, recordSelfCheckIn } = useGym();
 
-  const member = members.find((m) => m.memberCode === code) || members[0];
+  const member = members.find(
+    (m) =>
+      m.memberCode.toLowerCase() === code.toLowerCase() ||
+      m.phoneNumber.replace(/\s+/g, '') === code.replace(/\s+/g, '')
+  );
+  const memberTenant = tenants.find((t) => t.id === member?.tenantId) || activeTenant;
   
   // Modals
   const [showPtModal, setShowPtModal] = useState(false);
@@ -154,12 +159,13 @@ function MemberPassContent() {
   };
 
   const handleMemberPaystackRenewal = () => {
+    if (!member) return;
     initializePaystackPayment({
       email: member.email || 'member@fitledger.ng',
       amountInNaira: 30000,
       fullName: member.fullName,
       planName: 'VIP All-Access Monthly Pass Renewal',
-      gymName: activeTenant.name,
+      gymName: memberTenant.name,
       onSuccess: (ref) => {
         renewMember(member.id, 'plan_monthly_vip', 'paystack_online');
         alert(`✓ Payment Confirmed via Paystack!\n\nRef: ${ref}\nYour VIP Membership has been extended by 30 days!`);
@@ -168,6 +174,7 @@ function MemberPassContent() {
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!member) return;
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -182,6 +189,7 @@ function MemberPassContent() {
   };
 
   const handleSelfCheckInTrigger = () => {
+    if (!member) return;
     const res = recordSelfCheckIn(member.id);
     if (res.success) {
       playChime();
@@ -196,12 +204,46 @@ function MemberPassContent() {
   };
 
   const handleCopyReferral = () => {
+    if (!member) return;
     const refUrl = `https://fitledger-v1.vercel.app/m/${member.memberCode}?ref=${member.memberCode}`;
     navigator.clipboard.writeText(refUrl).then(() => {
       setReferCopied(true);
       setTimeout(() => setReferCopied(false), 2500);
     });
   };
+
+  if (!member) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 space-y-4 shadow-2xl">
+          <div className="w-16 h-16 rounded-full bg-red-600/20 border border-red-500/40 flex items-center justify-center mx-auto text-red-500">
+            <QrCode className="w-8 h-8" />
+          </div>
+          <span className="inline-block bg-red-500/20 text-red-400 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-red-500/40">
+            Pass Not Found
+          </span>
+          <h2 className="text-xl font-black text-white">No Member Pass #{code || '---'}</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            No active member pass was found matching this pass code or phone number at <strong className="text-white">{activeTenant.name}</strong>.
+          </p>
+          <div className="pt-4 flex flex-col gap-2">
+            <Link
+              href="/terminal"
+              className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-red-600/30"
+            >
+              Open Reception Desk Terminal
+            </Link>
+            <Link
+              href="/login"
+              className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded-xl text-xs transition"
+            >
+              Return to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const daysInOctober = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -263,8 +305,8 @@ function MemberPassContent() {
                 <ArrowLeft className="w-5 h-5 text-white" />
               </Link>
               <div>
-                <h1 className="font-extrabold text-sm tracking-tight leading-tight">{activeTenant.name}</h1>
-                <p className="text-[10px] text-white/80">{activeTenant.location}</p>
+                <h1 className="font-extrabold text-sm tracking-tight leading-tight">{memberTenant.name}</h1>
+                <p className="text-[10px] text-white/80">{memberTenant.location}</p>
               </div>
             </div>
             <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
