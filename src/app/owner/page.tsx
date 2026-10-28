@@ -649,8 +649,14 @@ export default function OwnerPage() {
             <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-3xl space-y-1">
               <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Total Gross Today</p>
               <p className="text-2xl font-black text-white">₦{shiftSummary.totalRevenue.toLocaleString()}</p>
-              <p className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5" /> +18% vs yesterday
+              <p className="text-xs text-zinc-400 font-semibold flex items-center gap-1">
+                {shiftSummary.totalRevenue > 0 ? (
+                  <span className="text-emerald-400 flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5" /> Shift gross revenue
+                  </span>
+                ) : (
+                  <span className="text-zinc-500">Awaiting first payment</span>
+                )}
               </p>
             </div>
 

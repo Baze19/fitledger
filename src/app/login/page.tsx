@@ -17,12 +17,13 @@ import {
   EyeOff,
   CheckCircle2,
   Info,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { authenticateUser, updateOwnerPassword, owners, staffList } = useGym();
+  const { authenticateUser, updateOwnerPassword, owners, staffList, onboardGymTenant } = useGym();
 
   const [identifier, setIdentifier] = useState('');
   const [credential, setCredential] = useState('');
@@ -30,6 +31,21 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showHint, setShowHint] = useState(false);
+
+  // Instant 14-Day Free Pilot Modal State
+  const [isPilotModalOpen, setIsPilotModalOpen] = useState(false);
+  const [pilotGymName, setPilotGymName] = useState('');
+  const [pilotLocation, setPilotLocation] = useState('Lagos, Nigeria');
+  const [pilotOwnerName, setPilotOwnerName] = useState('');
+  const [pilotOwnerPhone, setPilotOwnerPhone] = useState('');
+  const [pilotOwnerEmail, setPilotOwnerEmail] = useState('');
+  const [pilotPassword, setPilotPassword] = useState('');
+  const [pilotTier, setPilotTier] = useState<'Starter' | 'Growth' | 'Enterprise'>('Growth');
+  const [pilotSuccessData, setPilotSuccessData] = useState<{
+    gymName: string;
+    email: string;
+    role: string;
+  } | null>(null);
 
   // Forgot Password / Reset State
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -98,6 +114,27 @@ export default function LoginPage() {
     }
 
     setForgotError('No account found for that email or WhatsApp number. Please check for typos.');
+  };
+
+  const handlePilotSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pilotGymName || !pilotOwnerName || !pilotOwnerPhone || !pilotOwnerEmail) return;
+
+    const result = onboardGymTenant({
+      name: pilotGymName,
+      location: pilotLocation || 'Lagos, Nigeria',
+      ownerName: pilotOwnerName,
+      ownerPhone: pilotOwnerPhone,
+      ownerEmail: pilotOwnerEmail,
+      planTier: pilotTier,
+      tempPassword: pilotPassword || 'pilot2026',
+    });
+
+    setPilotSuccessData({
+      gymName: result.tenant.name,
+      email: result.owner.email,
+      role: 'Owner',
+    });
   };
 
   const handleResetSubmit = (e: React.FormEvent) => {
@@ -237,12 +274,13 @@ export default function LoginPage() {
         <div className="border-t border-zinc-800/80 pt-4 text-center">
           <p className="text-[11px] text-zinc-400">
             Want to use FitLedger for your fitness club?{' '}
-            <Link
-              href="/admin"
-              className="text-red-400 hover:text-red-300 font-bold hover:underline"
+            <button
+              type="button"
+              onClick={() => setIsPilotModalOpen(true)}
+              className="text-red-400 hover:text-red-300 font-bold hover:underline cursor-pointer"
             >
               Start 14-Day Free Pilot →
-            </Link>
+            </button>
           </p>
         </div>
 
@@ -381,6 +419,184 @@ export default function LoginPage() {
                   Return to Sign In
                 </button>
               </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* Instant 14-Day Free Pilot Registration Modal */}
+      {isPilotModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 font-sans">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white space-y-5 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div>
+                <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  14-Day Commercial Trial • ₦0 Upfront
+                </span>
+                <h3 className="font-black text-lg text-white mt-1">Start Your Gym Workspace</h3>
+                <p className="text-xs text-zinc-400">Instant multi-tenant workspace setup for gym owners</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPilotModalOpen(false);
+                  setPilotSuccessData(null);
+                }}
+                className="text-zinc-400 hover:text-white p-1 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {pilotSuccessData ? (
+              <div className="space-y-4 py-2">
+                <div className="bg-emerald-950/40 border-2 border-emerald-500 rounded-2xl p-5 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-black text-white">🎉 Workspace Created!</h4>
+                  <p className="text-xs text-emerald-300 font-semibold">{pilotSuccessData.gymName}</p>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    Your 14-day free pilot is now live. Receptionist lead PIN is set to <strong className="text-white font-mono">1234</strong>.
+                  </p>
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPilotModalOpen(false);
+                      router.push('/owner');
+                    }}
+                    className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Launch Owner Dashboard →</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPilotModalOpen(false);
+                      router.push('/terminal');
+                    }}
+                    className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs rounded-xl transition"
+                  >
+                    Open Reception Desk Terminal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handlePilotSignup} className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-zinc-300 block mb-1">Gym / Fitness Center Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Fitflex Fitness Irawo"
+                      value={pilotGymName}
+                      onChange={(e) => setPilotGymName(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-500 rounded-xl p-3 text-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-zinc-300 block mb-1">Location / City *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Ikorodu, Lagos"
+                      value={pilotLocation}
+                      onChange={(e) => setPilotLocation(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-500 rounded-xl p-3 text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-zinc-300 block mb-1">Owner Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Emeka Okafor"
+                      value={pilotOwnerName}
+                      onChange={(e) => setPilotOwnerName(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-500 rounded-xl p-3 text-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-zinc-300 block mb-1">WhatsApp Phone Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="e.g. 0803 123 4567"
+                      value={pilotOwnerPhone}
+                      onChange={(e) => setPilotOwnerPhone(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-500 rounded-xl p-3 text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-zinc-300 block mb-1">Work Email (Login ID) *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. owner@fitflex.ng"
+                      value={pilotOwnerEmail}
+                      onChange={(e) => setPilotOwnerEmail(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-500 rounded-xl p-3 text-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-zinc-300 block mb-1">Create Password *</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={pilotPassword}
+                      onChange={(e) => setPilotPassword(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-500 rounded-xl p-3 text-white focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-zinc-300 block mb-1.5">Select Trial Operating Plan</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'Starter', label: 'Starter', desc: '1 Club • 1 Desk', fee: '₦30,000/mo' },
+                      { id: 'Growth', label: 'Growth', desc: 'WhatsApp Bot + AI', fee: '₦45,000/mo' },
+                      { id: 'Enterprise', label: 'Enterprise', desc: 'Multi-Branch', fee: '₦80,000/mo' },
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setPilotTier(t.id as any)}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                          pilotTier === t.id
+                            ? 'bg-red-600/10 border-red-500 text-white'
+                            : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                        }`}
+                      >
+                        <p className="font-black text-xs text-white">{t.label}</p>
+                        <p className="text-[10px] text-zinc-400">{t.desc}</p>
+                        <span className="text-[9px] text-emerald-400 font-bold block mt-1">14 Days Free</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                >
+                  <Zap className="w-4 h-4 text-yellow-300" />
+                  <span>Launch 14-Day Free Gym Pilot</span>
+                </button>
+              </form>
             )}
 
           </div>

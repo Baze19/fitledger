@@ -712,9 +712,12 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       role: 'receptionist',
       pin: '1234',
       branchName: data.name,
-      shiftStatus: 'off_duty',
+      shiftStatus: 'on_duty',
     };
     setStaffList((prev) => [...prev, initialReceptionist]);
+    setActiveStaff(initialReceptionist);
+    setActiveTenant(newTenant);
+    setActiveOwner(newOwner);
 
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
@@ -819,6 +822,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const matchedStaff = staffList.find(
       (s) =>
         s.pin === cred ||
+        s.pin === id ||
         s.phone.replace(/\s+/g, '') === id.replace(/\s+/g, '') ||
         s.fullName.toLowerCase().includes(id)
     );
@@ -833,7 +837,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         success: true,
         role: 'receptionist' as const,
         targetUrl: '/terminal',
-        gymName: activeTenant.name,
+        gymName: staffTenant?.name || activeTenant.name,
         userName: activeMember.fullName,
       };
     }
@@ -1124,20 +1128,24 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [audit, ...prev]);
   };
 
-  // Shift financial totals
-  const cashExpected = transactions
+  // Shift financial totals (strictly isolated by active tenant)
+  const tenantTransactions = transactions.filter((t) => !t.tenantId || t.tenantId === activeTenant.id);
+  const tenantExpenses = expenses.filter((e) => !e.tenantId || e.tenantId === activeTenant.id);
+  const tenantCheckIns = checkIns.filter((c) => !c.tenantId || c.tenantId === activeTenant.id);
+
+  const cashExpected = tenantTransactions
     .filter((t) => t.paymentMethod === 'cash')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const posExpected = transactions
+  const posExpected = tenantTransactions
     .filter((t) => t.paymentMethod === 'pos_card')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const transferExpected = transactions
+  const transferExpected = tenantTransactions
     .filter((t) => t.paymentMethod === 'bank_transfer' || t.paymentMethod === 'paystack_online')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const drawerExpenses = expenses
+  const drawerExpenses = tenantExpenses
     .filter((e) => e.paidFromDrawer)
     .reduce((sum, e) => sum + e.amount, 0);
 
@@ -1154,7 +1162,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     posExpected,
     transferExpected,
     totalRevenue,
-    totalCheckIns: checkIns.length,
+    totalCheckIns: tenantCheckIns.length,
     overridesCount: 0,
     isLocked: false,
   });
@@ -1169,9 +1177,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       posExpected,
       transferExpected,
       totalRevenue,
-      totalCheckIns: checkIns.length,
+      totalCheckIns: tenantCheckIns.length,
     }));
-  }, [transactions, checkIns, activeStaff, cashExpected, drawerExpenses, netCashExpected, posExpected, transferExpected, totalRevenue]);
+  }, [transactions, checkIns, activeStaff, cashExpected, drawerExpenses, netCashExpected, posExpected, transferExpected, totalRevenue, activeTenant.id]);
 
   const setScanResultIdle = () => {
     setActiveScanResult({ status: 'idle' });

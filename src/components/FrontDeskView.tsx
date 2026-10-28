@@ -96,6 +96,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   }>({ status: 'idle', message: '' });
   const [newReferralCode, setNewReferralCode] = useState('');
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
+  const [registeredPass, setRegisteredPass] = useState<{ code: string; name: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Generate authentic, scannable QR code linking directly to express check-in
@@ -290,6 +291,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
           });
           playChime('success');
           setRegSuccess(`✓ Registered ${newMem.fullName} (#${newMem.memberCode}) via Paystack! Ref: ${ref}`);
+          setRegisteredPass({ code: newMem.memberCode, name: newMem.fullName });
           setNewFullName('');
           setNewPhone('');
           setNewPhotoUrl('');
@@ -311,6 +313,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
 
     playChime('success');
     setRegSuccess(`✓ Registered ${newMem.fullName} (#${newMem.memberCode})! Digital pass sent to WhatsApp ${newMem.phoneNumber}`);
+    setRegisteredPass({ code: newMem.memberCode, name: newMem.fullName });
     setNewFullName('');
     setNewPhone('');
     setNewPhotoUrl('');
@@ -722,7 +725,49 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                   <p className="text-[11px] text-zinc-400">Issues digital WhatsApp barcode pass immediately</p>
                 </div>
 
-                {regSuccess && (
+                {registeredPass && (
+                  <div className="bg-emerald-950/40 border-2 border-emerald-500 rounded-2xl p-4 text-emerald-300 text-xs space-y-2 animate-scale-up">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                        <CheckCircle2 className="w-4 h-4" /> Member Registered Successfully!
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setRegisteredPass(null)}
+                        className="text-zinc-400 hover:text-white text-xs p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-zinc-300">
+                      <strong>{registeredPass.name}</strong> • Member Pass <span className="font-mono font-bold text-white">#{registeredPass.code}</span>
+                    </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <a
+                        href={`/m/${registeredPass.code}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-lg text-[11px] flex items-center gap-1.5 transition shadow-md"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Open Pass (#{registeredPass.code}) ↗</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const res = checkInMember(registeredPass.code, 'qr_scan');
+                          if (res.success) playChime('success');
+                          else playChime('error');
+                        }}
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-lg text-[11px] transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>⚡ Test Turnstile Scan</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {regSuccess && !registeredPass && (
                   <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-emerald-400 text-xs">
                     {regSuccess}
                   </div>
