@@ -106,6 +106,7 @@ export interface GymTenant {
   location: string;
   ownerName: string;
   ownerPhone: string;
+  ownerEmail?: string;
   planTier: 'Starter' | 'Growth' | 'Enterprise';
   monthlyFee: number;
   membersCount: number;

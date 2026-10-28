@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod, ExpenseLog, ShiftCloseout } from '@/types';
 import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES, INITIAL_EXPENSES, INITIAL_SHIFT_CLOSEOUTS } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
@@ -166,6 +166,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     (p) => (!p.tenantId || p.tenantId === activeTenant.id) && p.isActive !== false
   );
 
+  const isHydratedRef = useRef<boolean>(false);
+
   // Storage keys for persistent real-data storage
   const STORAGE_KEYS = {
     MEMBERS: 'fitledger_members_store_v3',
@@ -176,6 +178,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     SHIFT_CLOSEOUTS: 'fitledger_shift_closeouts_v3',
     TENANTS: 'fitledger_tenants_store_v3',
     OWNERS: 'fitledger_owners_store_v3',
+    STAFF: 'fitledger_staff_store_v3',
     IS_DEMO: 'fitledger_is_demo_mode_v3',
   };
 
@@ -240,8 +243,10 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       if (savedTenants) {
         const parsed = JSON.parse(savedTenants);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setTenants(parsed);
-          setActiveTenant(parsed[0]);
+          const existingIds = new Set(parsed.map((t: any) => t.id));
+          const mergedTenants = [...parsed, ...INITIAL_TENANTS.filter((t) => !existingIds.has(t.id))];
+          setTenants(mergedTenants);
+          setActiveTenant(mergedTenants[0]);
         }
       }
 
@@ -249,12 +254,27 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       if (savedOwners) {
         const parsed = JSON.parse(savedOwners);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setOwners(parsed);
-          setActiveOwner(parsed[0]);
+          const existingEmails = new Set(parsed.map((o: any) => o.email.toLowerCase()));
+          const mergedOwners = [...parsed, ...INITIAL_OWNERS.filter((o) => !existingEmails.has(o.email.toLowerCase()))];
+          setOwners(mergedOwners);
+          setActiveOwner(mergedOwners[0]);
+        }
+      }
+
+      const savedStaff = localStorage.getItem(STORAGE_KEYS.STAFF);
+      if (savedStaff) {
+        const parsed = JSON.parse(savedStaff);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingStaffIds = new Set(parsed.map((s: any) => s.id));
+          const mergedStaff = [...parsed, ...INITIAL_STAFF.filter((s) => !existingStaffIds.has(s.id))];
+          setStaffList(mergedStaff);
+          setActiveStaff(mergedStaff[0]);
         }
       }
     } catch (e) {
       console.warn('LocalStorage hydration error:', e);
+    } finally {
+      isHydratedRef.current = true;
     }
   }, []);
 
@@ -272,60 +292,67 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   // Persist state updates to localStorage so real testing data never resets
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
     } catch (e) {}
   }, [plans]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
     } catch (e) {}
   }, [members]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
     } catch (e) {}
   }, [transactions]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.CHECKINS, JSON.stringify(checkIns));
     } catch (e) {}
   }, [checkIns]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
     } catch (e) {}
   }, [expenses]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.SHIFT_CLOSEOUTS, JSON.stringify(shiftCloseouts));
     } catch (e) {}
   }, [shiftCloseouts]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify(tenants));
     } catch (e) {}
   }, [tenants]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.OWNERS, JSON.stringify(owners));
     } catch (e) {}
   }, [owners]);
+
+  useEffect(() => {
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(staffList));
+    } catch (e) {}
+  }, [staffList]);
 
   // Offline Resiliency State (NEPA Power Cuts & Router Glitches)
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
@@ -719,6 +746,20 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setActiveTenant(newTenant);
     setActiveOwner(newOwner);
 
+    // Immediately commit new tenant, owner, and staff to localStorage synchronously
+    if (typeof window !== 'undefined') {
+      try {
+        const storedTenants = JSON.parse(localStorage.getItem(STORAGE_KEYS.TENANTS) || '[]');
+        localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify([newTenant, ...storedTenants.filter((t: any) => t.id !== newTenant.id)]));
+
+        const storedOwners = JSON.parse(localStorage.getItem(STORAGE_KEYS.OWNERS) || '[]');
+        localStorage.setItem(STORAGE_KEYS.OWNERS, JSON.stringify([newOwner, ...storedOwners.filter((o: any) => o.email.toLowerCase() !== newOwner.email.toLowerCase())]));
+
+        const storedStaff = JSON.parse(localStorage.getItem(STORAGE_KEYS.STAFF) || '[]');
+        localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify([initialReceptionist, ...storedStaff.filter((s: any) => s.id !== initialReceptionist.id)]));
+      } catch (e) {}
+    }
+
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
       tenantId,
@@ -782,7 +823,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     ) {
       if (cred === 'Opeyemiazeez@3007' || cred.length >= 3) {
         setIsFounderImpersonating(false);
-        const founderOwner = owners.find(
+        const allKnownOwners = [...owners, ...INITIAL_OWNERS.filter(io => !owners.some(o => o.email.toLowerCase() === io.email.toLowerCase()))];
+        const founderOwner = allKnownOwners.find(
           (o) => o.email.toLowerCase() === 'abiodunoludolapo@gmail.com'
         );
         if (founderOwner) setActiveOwner(founderOwner);
@@ -796,7 +838,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 2. Gym Owner
-    const matchedOwner = owners.find(
+    const allKnownOwners = [...owners, ...INITIAL_OWNERS.filter(io => !owners.some(o => o.email.toLowerCase() === io.email.toLowerCase()))];
+    const matchedOwner = allKnownOwners.find(
       (o) =>
         o.email.toLowerCase() === id ||
         (id === 'abiodunoludolpao@gmail.com' && o.email.toLowerCase() === 'abiodunoludolapo@gmail.com') ||
@@ -806,7 +849,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
     if (matchedOwner) {
       if (!matchedOwner.password || cred === matchedOwner.password || cred.length >= 4) {
-        const tenant = tenants.find((t) => t.id === matchedOwner.tenantId) || tenants[0];
+        const allKnownTenants = [...tenants, ...INITIAL_TENANTS.filter(it => !tenants.some(t => t.id === it.id))];
+        const tenant = allKnownTenants.find((t) => t.id === matchedOwner.tenantId) || allKnownTenants[0];
         setActiveTenant(tenant);
         setActiveOwner(matchedOwner);
         setIsFounderImpersonating(false);
@@ -826,7 +870,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 3. Front Desk Staff PIN
-    const matchedStaff = staffList.find(
+    const allKnownStaff = [...staffList, ...INITIAL_STAFF.filter(is => !staffList.some(s => s.id === is.id))];
+    const matchedStaff = allKnownStaff.find(
       (s) =>
         s.pin === cred ||
         s.pin === id ||
@@ -834,10 +879,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         s.fullName.toLowerCase().includes(id)
     );
 
-    if (matchedStaff || (cred.length === 4 && staffList.some((s) => s.pin === cred))) {
-      const activeMember = matchedStaff || staffList.find((s) => s.pin === cred)!;
+    if (matchedStaff || (cred.length === 4 && allKnownStaff.some((s) => s.pin === cred))) {
+      const activeMember = matchedStaff || allKnownStaff.find((s) => s.pin === cred)!;
       setActiveStaff(activeMember);
-      const staffTenant = tenants.find((t) => t.id === activeMember.tenantId);
+      const allKnownTenants = [...tenants, ...INITIAL_TENANTS.filter(it => !tenants.some(t => t.id === it.id))];
+      const staffTenant = allKnownTenants.find((t) => t.id === activeMember.tenantId);
       if (staffTenant) setActiveTenant(staffTenant);
       setIsFounderImpersonating(false);
       return {

@@ -89,20 +89,59 @@ export const INITIAL_RETAIL_ITEMS: RetailItem[] = [
 ];
 
 // Pristine Operational State
-export const INITIAL_TENANTS: GymTenant[] = [];
+export const INITIAL_TENANTS: GymTenant[] = [
+  {
+    id: 'tenant_dollbass',
+    name: 'DollbassGym',
+    slug: 'dollbassgym',
+    location: 'Lagos, Nigeria',
+    ownerName: 'Kayode Bashiru',
+    ownerPhone: '08023456789',
+    ownerEmail: 'bazemontana@gmail.com',
+    planTier: 'Growth',
+    monthlyFee: 45000,
+    membersCount: 0,
+    status: 'trial',
+    joinedDate: '2026-10-28',
+    trialExpiresAt: '2026-11-11',
+  },
+];
+
 export const INITIAL_OWNERS: OwnerAccount[] = [
   {
     id: 'owner_abiodun',
-    tenantId: 'tenant_fitledger_hq',
+    tenantId: 'tenant_platform_hq',
     fullName: 'Abiodun Oludolapo',
     email: 'abiodunoludolapo@gmail.com',
     phone: '08023456789',
     password: 'Opeyemiazeez@3007',
     role: 'owner',
   },
+  {
+    id: 'owner_kayode_dollbass',
+    tenantId: 'tenant_dollbass',
+    fullName: 'Kayode Bashiru',
+    email: 'bazemontana@gmail.com',
+    phone: '08023456789',
+    password: '12345',
+    role: 'owner',
+  },
 ];
+
 export const INITIAL_MEMBERS: Member[] = [];
-export const INITIAL_STAFF: StaffUser[] = [];
+
+export const INITIAL_STAFF: StaffUser[] = [
+  {
+    id: 'staff_dollbass_lead',
+    tenantId: 'tenant_dollbass',
+    fullName: 'Front Desk Lead',
+    phone: '08023456789',
+    role: 'receptionist',
+    pin: '1234',
+    branchName: 'DollbassGym',
+    shiftStatus: 'on_duty',
+  },
+];
 export const INITIAL_CHECKINS: CheckIn[] = [];
 export const INITIAL_TRANSACTIONS: Transaction[] = [];
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
