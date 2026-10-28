@@ -212,7 +212,7 @@ export default function LoginPage() {
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. tunde@fitledger.ng or 0802 345 6789"
+                placeholder="e.g. owner@yourgym.com or 0802 345 6789"
                 className="w-full bg-zinc-950 border border-zinc-800 focus:border-red-500 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 text-xs transition"
               />
             </div>
@@ -330,7 +330,7 @@ export default function LoginPage() {
                     required
                     value={forgotIdentifier}
                     onChange={(e) => setForgotIdentifier(e.target.value)}
-                    placeholder="e.g. tunde@fitledger.ng or 0802 345 6789"
+                    placeholder="e.g. owner@yourgym.com or 0802 345 6789"
                     className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-500 rounded-xl p-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
                   />
                 </div>
