@@ -111,6 +111,7 @@ export interface GymTenant {
   membersCount: number;
   status: 'active' | 'trial' | 'suspended';
   joinedDate: string;
+  trialExpiresAt?: string;
   referralProgram?: ReferralProgramSettings;
 }
 

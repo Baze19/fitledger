@@ -327,6 +327,63 @@ export default function OwnerPage() {
     (m) => m.status === 'expired' || m.totalVisitsThisMonth < 4
   );
 
+  // Lock Out Barrier: If gym license is suspended or trial expired
+  if (activeTenant.status === 'suspended' && !isFounderImpersonating) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-zinc-900 border border-red-500/50 rounded-3xl p-7 text-center space-y-5 shadow-2xl animate-scaleIn">
+          <div className="w-16 h-16 bg-red-600/20 text-red-500 border border-red-500/40 rounded-3xl mx-auto flex items-center justify-center text-3xl font-bold">
+            🔒
+          </div>
+          <div className="space-y-2">
+            <span className="bg-red-500/20 text-red-400 border border-red-500/40 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider">
+              Operating License Suspended
+            </span>
+            <h2 className="text-xl font-black text-white">{activeTenant.name}</h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Access to this gym workspace has been locked because the 14-day free pilot expired or subscription renewal is overdue. Front-desk terminal check-ins, reports, and member scans are disabled.
+            </p>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl text-xs space-y-2 text-zinc-300 text-left font-mono">
+            <div className="flex justify-between">
+              <span className="text-zinc-500">Owner:</span>
+              <span className="text-white font-bold">{activeTenant.ownerName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-500">License Tier:</span>
+              <span className="text-purple-400 font-bold">{activeTenant.planTier} (₦{activeTenant.monthlyFee.toLocaleString()}/mo)</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-500">Status:</span>
+              <span className="text-red-400 font-bold">Suspended by Admin</span>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <a
+              href={`https://wa.me/2348023456789?text=${encodeURIComponent(
+                `Hello FitLedger Billing! I want to reactivate/pay for the license of ${activeTenant.name}. Owner: ${activeTenant.ownerName}`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 cursor-pointer"
+            >
+              <Phone className="w-4 h-4" />
+              <span>Contact FitLedger Billing on WhatsApp</span>
+            </a>
+            <Link
+              href="/login"
+              className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white font-bold text-xs transition block text-center cursor-pointer"
+            >
+              Sign Out / Switch Workspace
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-8 space-y-6 font-sans">
       
@@ -399,26 +456,7 @@ export default function OwnerPage() {
             <span>{isCloudConnected ? 'Cloud PostgreSQL' : 'Local Storage Engine'}</span>
           </button>
 
-          {/* Real Data vs Demo Data Toggle */}
-          {isDemoMode ? (
-            <button
-              type="button"
-              onClick={() => setIsWipeConfirmOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95"
-              title="Clear sample members and test with your real gym customers"
-            >
-              <span>🧹 Wipe Mock Data (Test Real)</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={loadDemoData}
-              className="px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition active:scale-95"
-              title="Reload sample demo members and shifts for testing"
-            >
-              <span>🔄 Restore Demo Data</span>
-            </button>
-          )}
+
 
           <Link
             href="/terminal"

@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { useGym } from '@/context/gym-context';
 import { FrontDeskView } from '@/components/FrontDeskView';
 import { ShiftCloseModal } from '@/components/ShiftCloseModal';
-import { Lock, LogOut, Dumbbell, ShieldCheck, UserCheck } from 'lucide-react';
+import { Lock, LogOut, Phone, Dumbbell, ShieldCheck, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function TerminalPage() {
-  const { activeTenant, activeStaff, staffList, switchStaff } = useGym();
+  const { activeTenant, activeStaff, staffList, switchStaff, isFounderImpersonating } = useGym();
   
   // Terminal Lock Screen State
   const [isLocked, setIsLocked] = useState(false);
@@ -40,6 +40,48 @@ export default function TerminalPage() {
     setEnteredPin(enteredPin.slice(0, -1));
     setPinError(false);
   };
+
+  // Lock Out Barrier: If gym license is suspended or trial expired
+  if (activeTenant.status === 'suspended' && !isFounderImpersonating) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-zinc-900 border border-red-500/50 rounded-3xl p-7 text-center space-y-5 shadow-2xl animate-scaleIn">
+          <div className="w-16 h-16 bg-red-600/20 text-red-500 border border-red-500/40 rounded-3xl mx-auto flex items-center justify-center text-3xl font-bold">
+            🔒
+          </div>
+          <div className="space-y-2">
+            <span className="bg-red-500/20 text-red-400 border border-red-500/40 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider">
+              Front-Desk Terminal Suspended
+            </span>
+            <h2 className="text-xl font-black text-white">{activeTenant.name}</h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Front-desk turnstile access, barcode scanner inputs, and cash drawer reconciliations are locked because this gym license is suspended or trial has ended.
+            </p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <a
+              href={`https://wa.me/2348023456789?text=${encodeURIComponent(
+                `Hello FitLedger Support! Counter terminal is locked for ${activeTenant.name}. Need license renewal.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 cursor-pointer"
+            >
+              <Phone className="w-4 h-4" />
+              <span>Contact FitLedger Billing on WhatsApp</span>
+            </a>
+            <Link
+              href="/login"
+              className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white font-bold text-xs transition block text-center cursor-pointer"
+            >
+              Sign Out / Switch Workspace
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // If locked, render POS Counter Lock Screen
   if (isLocked) {

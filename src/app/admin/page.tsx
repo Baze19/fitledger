@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 export default function SuperAdminPage() {
   const router = useRouter();
-  const { tenants, owners, onboardGymTenant, impersonateTenant, activeTenant, auditLogs } = useGym();
+  const { tenants, owners, onboardGymTenant, impersonateTenant, activeTenant, auditLogs, updateTenantStatus, extendTenantTrial, upgradeTenantTier } = useGym();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTenantSuccess, setNewTenantSuccess] = useState<{
@@ -216,22 +216,84 @@ export default function SuperAdminPage() {
                       </code>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="font-bold text-white">{t.planTier}</span>
-                      <span className="text-[10px] text-emerald-400 block font-mono font-bold">
-                        ₦{t.monthlyFee.toLocaleString()}/mo
-                      </span>
+                      <div className="space-y-1">
+                        <select
+                          value={t.planTier}
+                          onChange={(e) => upgradeTenantTier(t.id, e.target.value as any)}
+                          className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-white font-bold cursor-pointer focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="Starter">Starter (₦25k)</option>
+                          <option value="Growth">Growth (₦45k)</option>
+                          <option value="Enterprise">Enterprise (₦95k)</option>
+                        </select>
+                        <span className="text-[10px] text-zinc-500 block">
+                          {t.planTier === 'Starter' ? '200 max members' : 'Unlimited'}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-4 px-4">
-                      {t.status === 'active' && (
-                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                          ● Active Paid
-                        </span>
-                      )}
-                      {t.status === 'trial' && (
-                        <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                          ⏳ 14-Day Pilot
-                        </span>
-                      )}
+                      <div className="space-y-1.5">
+                        {t.status === 'active' && (
+                          <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            Active Paid License
+                          </span>
+                        )}
+                        {t.status === 'trial' && (
+                          <div>
+                            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                              ⏳ 14-Day Free Pilot
+                            </span>
+                            {t.trialExpiresAt && (
+                              <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                                Exp: {t.trialExpiresAt}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {t.status === 'suspended' && (
+                          <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[10px] px-2 py-0.5 rounded-full font-black inline-flex items-center gap-1 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            🚨 SUSPENDED (LOCKED OUT)
+                          </span>
+                        )}
+
+                        {/* Founder Remote Control Toggles */}
+                        <div className="flex items-center gap-1.5 pt-1">
+                          {t.status === 'suspended' ? (
+                            <button
+                              type="button"
+                              onClick={() => updateTenantStatus(t.id, 'active')}
+                              className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold cursor-pointer transition shadow-sm"
+                              title="Unlock this gym and restore full front-desk access"
+                            >
+                              🔓 Unlock Access
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => updateTenantStatus(t.id, 'suspended')}
+                                className="px-2 py-0.5 rounded-lg bg-red-600/30 hover:bg-red-600 text-red-200 hover:text-white border border-red-500/40 text-[10px] font-bold cursor-pointer transition"
+                                title="Lock out gym workspace if subscription is unpaid"
+                              >
+                                🔒 Lock Out
+                              </button>
+                              {t.status === 'trial' && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateTenantStatus(t.id, 'active')}
+                                  className="px-2 py-0.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-[10px] font-bold cursor-pointer transition"
+                                  title="Mark as paid subscriber"
+                                >
+                                  ✓ Mark Paid
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="py-4 px-4 text-right">
                       <button

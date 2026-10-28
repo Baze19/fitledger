@@ -20,6 +20,8 @@ interface GymContextType {
   switchTenant: (tenantId: string) => void;
   addTenant: (data: Omit<GymTenant, 'id' | 'joinedDate'>) => GymTenant;
   updateTenantReferralProgram: (tenantId: string, settings: GymTenant['referralProgram']) => void;
+  updateTenantStatus: (tenantId: string, status: 'active' | 'trial' | 'suspended') => void;
+  extendTenantTrial: (tenantId: string, days?: number) => void;
 
   owners: OwnerAccount[];
   activeOwner: OwnerAccount | null;
@@ -115,16 +117,49 @@ interface GymContextType {
 
 const GymContext = createContext<GymContextType | undefined>(undefined);
 
+export const DEFAULT_EMPTY_STAFF: StaffUser = {
+  id: 'staff_default',
+  tenantId: 'tenant_placeholder',
+  fullName: 'Reception Lead',
+  phone: '08000000000',
+  role: 'receptionist',
+  pin: '1234',
+  branchName: 'Front Desk',
+  shiftStatus: 'off_duty',
+};
+
+export const EMPTY_FALLBACK_TENANT: GymTenant = {
+  id: 'tenant_placeholder',
+  name: 'No Gym Provisioned Yet',
+  slug: 'no-gym',
+  location: 'Onboard your first gym in /admin',
+  ownerName: 'Platform Founder',
+  ownerPhone: '0802 345 6789',
+  planTier: 'Growth',
+  monthlyFee: 45000,
+  membersCount: 0,
+  status: 'trial',
+  joinedDate: new Date().toISOString().slice(0, 10),
+  trialExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+};
+
 export function GymProvider({ children }: { children: React.ReactNode }) {
   const [tenants, setTenants] = useState<GymTenant[]>(INITIAL_TENANTS);
-  const [activeTenant, setActiveTenant] = useState<GymTenant>(INITIAL_TENANTS[0]); // Ikorodu branch
+  const [activeTenant, setActiveTenant] = useState<GymTenant>(INITIAL_TENANTS[0] || EMPTY_FALLBACK_TENANT);
   const [owners, setOwners] = useState<OwnerAccount[]>(INITIAL_OWNERS);
-  const [activeOwner, setActiveOwner] = useState<OwnerAccount | null>(INITIAL_OWNERS[0]);
+  const [activeOwner, setActiveOwner] = useState<OwnerAccount | null>(INITIAL_OWNERS[0] || null);
   const [isFounderImpersonating, setIsFounderImpersonating] = useState<boolean>(false);
 
   const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
   const [plans, setPlans] = useState<Plan[]>(INITIAL_PLANS);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+
+  // Auto sync activeTenant if placeholder is active
+  useEffect(() => {
+    if (tenants.length > 0 && activeTenant.id === 'tenant_placeholder') {
+      setActiveTenant(tenants[0]);
+    }
+  }, [tenants, activeTenant.id]);
 
   // Filter plans available for current active tenant (custom or default)
   const activePlans = plans.filter(
@@ -133,13 +168,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   // Storage keys for persistent real-data storage
   const STORAGE_KEYS = {
-    MEMBERS: 'fitledger_members_store_v2',
-    PLANS: 'fitledger_plans_store_v2',
-    TRANSACTIONS: 'fitledger_tx_store_v2',
-    CHECKINS: 'fitledger_checkins_store_v2',
-    EXPENSES: 'fitledger_expenses_store_v2',
-    SHIFT_CLOSEOUTS: 'fitledger_shift_closeouts_v2',
-    IS_DEMO: 'fitledger_is_demo_mode_v2',
+    MEMBERS: 'fitledger_members_store_v3',
+    PLANS: 'fitledger_plans_store_v3',
+    TRANSACTIONS: 'fitledger_tx_store_v3',
+    CHECKINS: 'fitledger_checkins_store_v3',
+    EXPENSES: 'fitledger_expenses_store_v3',
+    SHIFT_CLOSEOUTS: 'fitledger_shift_closeouts_v3',
+    TENANTS: 'fitledger_tenants_store_v3',
+    OWNERS: 'fitledger_owners_store_v3',
+    IS_DEMO: 'fitledger_is_demo_mode_v3',
   };
 
   // Hydrate persistent state from browser storage on client mount
@@ -198,13 +235,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           setShiftCloseouts(parsed);
         }
       }
+
+      const savedTenants = localStorage.getItem(STORAGE_KEYS.TENANTS);
+      if (savedTenants) {
+        const parsed = JSON.parse(savedTenants);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTenants(parsed);
+          setActiveTenant(parsed[0]);
+        }
+      }
+
+      const savedOwners = localStorage.getItem(STORAGE_KEYS.OWNERS);
+      if (savedOwners) {
+        const parsed = JSON.parse(savedOwners);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setOwners(parsed);
+          setActiveOwner(parsed[0]);
+        }
+      }
     } catch (e) {
       console.warn('LocalStorage hydration error:', e);
     }
   }, []);
 
   const [staffList, setStaffList] = useState<StaffUser[]>(INITIAL_STAFF);
-  const [activeStaff, setActiveStaff] = useState<StaffUser>(INITIAL_STAFF[0]); // Mary Okafor
+  const [activeStaff, setActiveStaff] = useState<StaffUser>(INITIAL_STAFF[0] || DEFAULT_EMPTY_STAFF);
   const [checkIns, setCheckIns] = useState<CheckIn[]>(INITIAL_CHECKINS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
@@ -258,6 +313,20 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   }, [shiftCloseouts]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify(tenants));
+    } catch (e) {}
+  }, [tenants]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.OWNERS, JSON.stringify(owners));
+    } catch (e) {}
+  }, [owners]);
+
   // Offline Resiliency State (NEPA Power Cuts & Router Glitches)
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
   const [offlineQueueCount, setOfflineQueueCount] = useState<number>(0);
@@ -267,9 +336,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     status: 'allowed' | 'denied' | 'not_found' | 'idle';
     message?: string;
   }>({
-    member: INITIAL_MEMBERS[0],
-    status: 'allowed',
-    message: 'Active monthly VIP Pass (Expires in 18 days)',
+    status: 'idle',
   });
 
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(isSupabaseConfigured);
@@ -560,6 +627,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const tenantId = `tenant_${Date.now()}`;
     const tempPassword = data.tempPassword || `Fit#${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const trialExp = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
     const newTenant: GymTenant = {
       id: tenantId,
       name: data.name,
@@ -571,8 +641,54 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       monthlyFee,
       membersCount: 0,
       status: 'trial',
-      joinedDate: '2026-10-23',
+      joinedDate: todayIso,
+      trialExpiresAt: trialExp,
+      referralProgram: {
+        enabled: true,
+        rewardDays: 5,
+        friendDiscountNaira: 2000,
+        headline: 'Give ₦2,000 Off, Get 5 Free Days! 🔥',
+        termsDescription: 'Valid when friend registers for Monthly Standard or Monthly VIP.',
+      },
     };
+
+    // Automatically create default starting plans for this gym
+    const defaultPlans: Plan[] = [
+      {
+        id: `plan_daily_${tenantId}`,
+        tenantId,
+        name: 'Daily Workout Pass',
+        type: 'daily',
+        price: data.planTier === 'Starter' ? 2500 : 3500,
+        durationDays: 1,
+        ptSessionsIncluded: 0,
+        description: 'Single day access to weights & cardio floor.',
+        isActive: true,
+      },
+      {
+        id: `plan_monthly_${tenantId}`,
+        tenantId,
+        name: 'Standard Monthly Membership',
+        type: 'monthly',
+        price: data.planTier === 'Starter' ? 25000 : 35000,
+        durationDays: 30,
+        ptSessionsIncluded: 0,
+        description: 'Full 30 days gym access with unlimited scan-ins.',
+        isActive: true,
+      },
+      {
+        id: `plan_vip_${tenantId}`,
+        tenantId,
+        name: 'VIP Monthly + Personal Trainer',
+        type: 'monthly',
+        price: data.planTier === 'Starter' ? 45000 : 65000,
+        durationDays: 30,
+        ptSessionsIncluded: 4,
+        description: 'All-inclusive gym access + 4 personal training coaching sessions.',
+        isActive: true,
+      },
+    ];
+    setPlans((prev) => [...defaultPlans, ...prev]);
 
     const newOwner: OwnerAccount = {
       id: `owner_${Date.now()}`,
@@ -614,6 +730,36 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const whatsappMessage = `*Welcome to FitLedger OS!* 🏋️‍♂️\n\nHello ${data.ownerName},\nYour enterprise gym workspace for *${data.name}* is now live!\n\n🔗 *Login Portal:* https://fitledger.ng/login\n📧 *Email/Username:* ${data.ownerEmail}\n🔑 *Temporary Password:* ${tempPassword}\n\n*Next Steps:*\n1. Log in to your Owner Business Suite.\n2. Add your receptionists with their 4-digit Shift PINs.\n3. Generate instant member passes for your active members.\n\n_Protected by FitLedger OS Lagos Anti-Theft Architecture._`;
 
     return { tenant: newTenant, owner: newOwner, whatsappMessage };
+  };
+
+  const updateTenantStatus = (tenantId: string, status: 'active' | 'trial' | 'suspended') => {
+    setTenants((prev) =>
+      prev.map((t) => (t.id === tenantId ? { ...t, status } : t))
+    );
+    if (activeTenant.id === tenantId) {
+      setActiveTenant((prev) => ({ ...prev, status }));
+    }
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId,
+      timestamp: 'Just now',
+      actorStaffName: 'Platform Founder (Abiodun Oludolapo)',
+      action: `Tenant Status Changed: ${status.toUpperCase()}`,
+      details: `Gym status set to ${status}. ${status === 'suspended' ? 'Workspace locked out.' : 'Access active.'}`,
+      severity: status === 'suspended' ? 'alert' : 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
+  const extendTenantTrial = (tenantId: string, days: number = 7) => {
+    setTenants((prev) =>
+      prev.map((t) => {
+        if (t.id !== tenantId) return t;
+        const currentExp = t.trialExpiresAt ? new Date(t.trialExpiresAt).getTime() : Date.now();
+        const newExp = new Date(Math.max(Date.now(), currentExp) + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        return { ...t, status: 'trial', trialExpiresAt: newExp };
+      })
+    );
   };
 
   const authenticateUser = (identifier: string, credential: string) => {
@@ -1000,7 +1146,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const totalRevenue = cashExpected + posExpected + transferExpected;
 
   const [shiftSummary, setShiftSummary] = useState<ShiftSummary>({
-    staffName: activeStaff.fullName,
+    staffName: activeStaff?.fullName || 'Reception Lead',
     shiftStartTime: '08:00 AM',
     cashExpected,
     drawerExpenses,
@@ -1016,7 +1162,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setShiftSummary((prev) => ({
       ...prev,
-      staffName: activeStaff.fullName,
+      staffName: activeStaff?.fullName || 'Reception Lead',
       cashExpected,
       drawerExpenses,
       netCashExpected,
@@ -1927,6 +2073,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         impersonateTenant,
         exitImpersonation,
         onboardGymTenant,
+        updateTenantStatus,
+        extendTenantTrial,
         authenticateUser,
         updateOwnerPassword,
         members,

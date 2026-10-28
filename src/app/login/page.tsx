@@ -233,33 +233,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Discreet Test Credentials Accordion for Testing */}
-        <div className="border-t border-zinc-800/80 pt-3">
-          <button
-            type="button"
-            onClick={() => setShowHint(!showHint)}
-            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition flex items-center gap-1.5 mx-auto"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>{showHint ? 'Hide test credentials' : 'Need test credentials? Click to view'}</span>
-          </button>
-
-          {showHint && (
-            <div className="mt-3 p-3 bg-zinc-950/80 border border-zinc-800 rounded-2xl text-[11px] text-zinc-400 space-y-2">
-              <div className="space-y-0.5">
-                <span className="text-purple-400 font-bold block">👑 Founder (Super Admin HQ):</span>
-                <code className="text-zinc-300 block">wincodes2@gmail.com / admin</code>
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-red-400 font-bold block">🏢 Gym Owner (Ikorodu Gym):</span>
-                <code className="text-zinc-300 block">tunde@fitledger.ng / fitledger2026</code>
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-amber-400 font-bold block">🖥️ Receptionist (Front Desk):</span>
-                <code className="text-zinc-300 block">PIN: 4821 (Mary) or 1102 (John)</code>
-              </div>
-            </div>
-          )}
+        {/* Commercial Registration / Pilot Link */}
+        <div className="border-t border-zinc-800/80 pt-4 text-center">
+          <p className="text-[11px] text-zinc-400">
+            Want to use FitLedger for your fitness club?{' '}
+            <Link
+              href="/admin"
+              className="text-red-400 hover:text-red-300 font-bold hover:underline"
+            >
+              Start 14-Day Free Pilot →
+            </Link>
+          </p>
         </div>
 
       </div>
