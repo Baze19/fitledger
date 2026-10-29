@@ -244,7 +244,7 @@ export default function OwnerPage() {
 
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [auditItemId, setAuditItemId] = useState(retailItems[0]?.id || 'ret_water');
-  const [auditPhysicalCount, setAuditPhysicalCount] = useState(0);
+  const [auditPhysicalCount, setAuditPhysicalCount] = useState<number | string>(18);
   const [auditNotes, setAuditNotes] = useState('');
   const [auditResult, setAuditResult] = useState<{ discrepancy: number; isBalanced: boolean } | null>(null);
 
@@ -1269,7 +1269,13 @@ export default function OwnerPage() {
               </button>
               <button
                 onClick={() => {
+                  const defaultItem = retailItems.find((r) => r.category !== 'daily_pass') || retailItems[0];
+                  if (defaultItem) {
+                    setAuditItemId(defaultItem.id);
+                    setAuditPhysicalCount(defaultItem.inStock);
+                  }
                   setAuditResult(null);
+                  setAuditNotes('');
                   setIsAuditModalOpen(true);
                 }}
                 className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition flex items-center gap-2 border border-zinc-700 cursor-pointer"
@@ -2854,7 +2860,8 @@ export default function OwnerPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  const res = reconcileStockCount(auditItemId, auditPhysicalCount, auditNotes);
+                  const count = typeof auditPhysicalCount === 'number' ? auditPhysicalCount : parseInt(auditPhysicalCount || '0', 10);
+                  const res = reconcileStockCount(auditItemId, count, auditNotes);
                   setAuditResult(res);
                 }}
                 className="space-y-4 text-xs"
@@ -2881,7 +2888,8 @@ export default function OwnerPage() {
 
                 {(() => {
                   const targetItem = retailItems.find((r) => r.id === auditItemId) || retailItems[0];
-                  const diff = auditPhysicalCount - targetItem.inStock;
+                  const numericCount = auditPhysicalCount === '' ? targetItem.inStock : Number(auditPhysicalCount);
+                  const diff = numericCount - targetItem.inStock;
                   const leakageNaira = Math.abs(diff) * targetItem.price;
 
                   return (
@@ -2904,9 +2912,16 @@ export default function OwnerPage() {
                         <input
                           type="number"
                           min="0"
-                          required
                           value={auditPhysicalCount}
-                          onChange={(e) => setAuditPhysicalCount(Number(e.target.value))}
+                          placeholder={`Expected: ${targetItem.inStock}`}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setAuditPhysicalCount('');
+                            } else {
+                              setAuditPhysicalCount(Math.max(0, parseInt(val, 10) || 0));
+                            }
+                          }}
                           className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono text-base focus:outline-none focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
