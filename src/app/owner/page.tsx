@@ -1265,7 +1265,7 @@ export default function OwnerPage() {
                 className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition flex items-center gap-2 border border-zinc-700 cursor-pointer"
               >
                 <PlusCircle className="w-4 h-4 text-emerald-400" />
-                <span>Add Product SKU</span>
+                <span>Add New Product</span>
               </button>
               <button
                 onClick={() => {
@@ -1329,7 +1329,7 @@ export default function OwnerPage() {
                 Low-Stock Threshold Alert
               </span>
               <p className="text-2xl font-black text-white font-mono">
-                {lowStockCount} <span className="text-xs text-zinc-400 font-normal">SKUs Below Min</span>
+                {lowStockCount} <span className="text-xs text-zinc-400 font-normal">{lowStockCount === 1 ? 'Item Low on Stock' : 'Items Low on Stock'}</span>
               </p>
               <span className="text-[11px] text-amber-300/80 block">
                 {lowStockCount > 0 ? 'Restock recommended before weekend' : 'All items well stocked'}
@@ -1341,7 +1341,7 @@ export default function OwnerPage() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-xl">
             <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
               <div>
-                <h3 className="font-extrabold text-white text-sm">Active SKU Catalog ({retailItems.length} Products)</h3>
+                <h3 className="font-extrabold text-white text-sm">Active Products & Drinks ({retailItems.length} Items)</h3>
                 <p className="text-xs text-zinc-500">Physical stock updated in real time as front desk clicks items</p>
               </div>
               <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full">
@@ -1353,7 +1353,7 @@ export default function OwnerPage() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-zinc-950 text-zinc-400 font-bold border-b border-zinc-800">
                   <tr>
-                    <th className="py-3 px-5">Product SKU</th>
+                    <th className="py-3 px-5">Product Name</th>
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Current In-Stock</th>
                     <th className="py-3 px-4">Wholesale Cost</th>
@@ -1371,13 +1371,13 @@ export default function OwnerPage() {
                           <span className="text-3xl">🛒</span>
                           <p className="font-bold text-white text-sm">No Pro-Shop Inventory Registered</p>
                           <p className="text-zinc-500 text-xs max-w-sm">
-                            Click &ldquo;+ Add Product SKU&rdquo; above to register water bottles, drinks, energy bars, or merchandise for live testing.
+                            Click &ldquo;+ Add New Product&rdquo; above to register water bottles, drinks, energy bars, or merchandise for live testing.
                           </p>
                           <button
                             onClick={() => setIsAddSkuModalOpen(true)}
                             className="mt-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs transition cursor-pointer"
                           >
-                            + Add Product SKU
+                            + Add New Product
                           </button>
                         </div>
                       </td>
@@ -2585,7 +2585,7 @@ export default function OwnerPage() {
                   }}
                   className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
                 >
-                  + Add First Product SKU
+                  + Add First Product
                 </button>
               </div>
             ) : (
@@ -2685,7 +2685,7 @@ export default function OwnerPage() {
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-black text-white text-base">Add New Product SKU</h3>
+                <h3 className="font-black text-white text-base">Add New Product / Drink</h3>
               </div>
               <button
                 onClick={() => setIsAddSkuModalOpen(false)}
@@ -2700,7 +2700,7 @@ export default function OwnerPage() {
                 <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
                   <Check className="w-6 h-6 stroke-[3]" />
                 </div>
-                <h4 className="font-extrabold text-white text-sm">Product SKU Created!</h4>
+                <h4 className="font-extrabold text-white text-sm">Product Added to Inventory!</h4>
                 <p className="text-xs text-zinc-300">{skuCreatedSuccess}</p>
                 <button
                   onClick={() => setIsAddSkuModalOpen(false)}
@@ -2841,7 +2841,7 @@ export default function OwnerPage() {
                   type="submit"
                   className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition shadow-lg shadow-emerald-600/30 cursor-pointer"
                 >
-                  Save SKU to Catalog & POS Terminal
+                  Save Product to Counter POS
                 </button>
               </form>
             )}
@@ -2913,7 +2913,7 @@ export default function OwnerPage() {
                   }}
                   className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-xl text-xs transition cursor-pointer"
                 >
-                  + Add First Product SKU
+                  + Add First Product
                 </button>
               </div>
             ) : (

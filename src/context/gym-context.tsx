@@ -1086,7 +1086,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       tenantId: activeTenant.id,
       timestamp: 'Just now',
       actorStaffName: 'Gym Owner',
-      action: 'Inventory: New SKU Added',
+      action: 'Inventory: New Product Added',
       details: `Added new pro-shop item "${newItem.name}" at ₦${newItem.price.toLocaleString()} (Cost: ₦${newItem.costPrice.toLocaleString()}). Initial Stock: ${newItem.inStock} units.`,
       severity: 'info',
     };
