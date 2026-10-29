@@ -46,6 +46,10 @@ import {
   Tag,
   Database,
   ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Menu,
+  LayoutGrid,
 } from 'lucide-react';
 import Link from 'next/link';
 import { BulkMemberImportModal } from '@/components/BulkMemberImportModal';
@@ -112,8 +116,9 @@ export default function OwnerPage() {
   const [planFormIsActive, setPlanFormIsActive] = useState<boolean>(true);
   const [planToast, setPlanToast] = useState<string | null>(null);
 
-  // Cloud Database Guide Modal State
+  // Cloud Database Guide Modal State & Collapsible Modules Nav
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
+  const [isModulesOpen, setIsModulesOpen] = useState(false);
 
   const openAddPlanModal = () => {
     setEditingPlan(null);
@@ -443,19 +448,17 @@ export default function OwnerPage() {
 
         {/* Global Navigation & Data Engine Shortcuts */}
         <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-          {/* Cloud Database Status */}
+          {/* Zero-Downtime Engine Status */}
           <button
             type="button"
             onClick={() => setIsDatabaseModalOpen(true)}
             className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer text-zinc-300 transition"
-            title="Inspect Database Connectivity & Cloud PostgreSQL Sync"
+            title="NEPA & Offline Protection: Zero-Downtime Local Engine is Active"
           >
-            <Database className="w-3.5 h-3.5 text-blue-400" />
-            <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`}></span>
-            <span>{isCloudConnected ? 'Cloud PostgreSQL' : 'Local Storage Engine'}</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>{isCloudConnected ? 'Cloud PostgreSQL • Synced' : '🛡️ Zero-Downtime Engine: Active'}</span>
           </button>
-
-
 
           <Link
             href="/terminal"
@@ -484,136 +487,295 @@ export default function OwnerPage() {
         </div>
       </div>
 
-      {/* Internal Owner Tabs */}
-      <div className="flex flex-wrap bg-zinc-900 border border-zinc-800 p-1.5 rounded-2xl gap-1 text-xs font-bold w-fit">
-        <button
-          onClick={() => setActiveTab('finance')}
-          className={`px-4 py-2 rounded-xl transition cursor-pointer ${
-            activeTab === 'finance' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          1. Financials & Anti-Fake Alert
-        </button>
-        <button
-          onClick={() => setActiveTab('plans')}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'plans' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-          <span>2. Plans & Pricing</span>
-          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">
-            {activePlans.length}
-          </span>
-        </button>
-        <button
-          onClick={() => {
-            if (!hasFeature('ptTrainerScheduling')) {
-              openUpgradeModal('ptTrainerScheduling');
-            } else {
-              setActiveTab('trainers');
-            }
-          }}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'trainers' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
-          <span>3. PT Commissions</span>
-          {!hasFeature('ptTrainerScheduling') ? (
-            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
-              🔒 Growth
+      {/* Sleek Compact Navigation Bar with Collapsible Module Drawer */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-zinc-900/90 border border-zinc-800/80 p-2 rounded-2xl backdrop-blur-md">
+          {/* Left: Active Module Identifier & Top 3 Daily Shortcuts */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+            <span className="text-[11px] text-zinc-500 font-semibold uppercase tracking-wider pl-1 pr-2 border-r border-zinc-800">
+              Module:
             </span>
-          ) : (
-            <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{trainerCommissions.length}</span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('inventory')}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'inventory' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <Package className="w-3.5 h-3.5 text-blue-400" />
-          <span>4. Pro-Shop & Inventory</span>
-          {lowStockCount > 0 ? (
-            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
-              {lowStockCount} Low
-            </span>
-          ) : (
-            <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{retailItems.length}</span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('churn')}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'churn' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-          <span>5. At-Risk Churn Radar</span>
-          <span className="bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded-full text-[10px] font-bold">{atRiskMembers.length}</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('staff')}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'staff' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <span>6. Staff & Shift PINs</span>
-          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{staffList.length}</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('members')}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'members' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <span>7. Member Directory</span>
-          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{members.length}</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('whatsapp')}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'whatsapp' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <Bot className="w-3.5 h-3.5 text-purple-400" />
-          <span>8. WhatsApp AI Auditor</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('referrals')}
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'referrals' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          <Gift className="w-3.5 h-3.5 text-purple-400" />
-          <span>9. Viral & Referral Engine</span>
-          {activeTenant.referralProgram?.enabled ? (
-            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded-full text-[9px] font-bold">
-              Active
-            </span>
-          ) : (
-            <span className="bg-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded-full text-[9px]">
-              Off
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (!hasFeature('turnstileGateApi')) {
-              openUpgradeModal('turnstileGateApi');
-            }
-          }}
-          className="px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-white border border-dashed border-purple-500/40 hover:border-purple-500/80 bg-purple-950/20"
-        >
-          <Lock className="w-3.5 h-3.5 text-purple-400" />
-          <span>10. Turnstile Barriers</span>
-          <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
-            Enterprise
-          </span>
-        </button>
+
+            {/* Quick 1-Click Primary Tabs */}
+            <button
+              onClick={() => setActiveTab('finance')}
+              className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'finance'
+                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                  : 'bg-zinc-950/60 text-zinc-400 hover:text-white border border-zinc-800/60'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+              <span>1. Financials & Audit</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('members')}
+              className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'members'
+                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                  : 'bg-zinc-950/60 text-zinc-400 hover:text-white border border-zinc-800/60'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 text-blue-400" />
+              <span>7. Member Directory</span>
+              <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{members.length}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'plans'
+                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                  : 'bg-zinc-950/60 text-zinc-400 hover:text-white border border-zinc-800/60'
+              }`}
+            >
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+              <span>2. Plans & Pricing</span>
+              <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{activePlans.length}</span>
+            </button>
+
+            {/* If the current active tab is one of the secondary tabs, display it prominently */}
+            {!['finance', 'members', 'plans'].includes(activeTab) && (
+              <span className="px-3.5 py-1.5 rounded-xl bg-red-600 text-white shadow-lg shadow-red-600/30 flex items-center gap-1.5 animate-fadeIn">
+                <span>
+                  {activeTab === 'trainers' && '3. PT Commissions'}
+                  {activeTab === 'inventory' && '4. Pro-Shop & Inventory'}
+                  {activeTab === 'churn' && '5. At-Risk Churn Radar'}
+                  {activeTab === 'staff' && '6. Staff & Shift PINs'}
+                  {activeTab === 'whatsapp' && '8. WhatsApp AI Auditor'}
+                  {activeTab === 'referrals' && '9. Viral & Referral Engine'}
+                </span>
+              </span>
+            )}
+          </div>
+
+          {/* Right: Collapsible Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsModulesOpen(!isModulesOpen)}
+            className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition shadow-sm ${
+              isModulesOpen
+                ? 'bg-red-500/10 border-red-500/40 text-red-400'
+                : 'bg-zinc-950 hover:bg-zinc-800 border-zinc-800 text-zinc-300 hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-red-500" />
+            <span>{isModulesOpen ? 'Hide Modules' : 'All Modules (10)'}</span>
+            {isModulesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {/* Collapsible Drawer: All 10 Modules Categorized Cleanly */}
+        {isModulesOpen && (
+          <div className="bg-zinc-950/95 border border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-2xl backdrop-blur-xl animate-scaleIn space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-red-500" />
+                <h4 className="font-extrabold text-xs uppercase tracking-wider text-white">
+                  Owner Business Suite • All Modules
+                </h4>
+              </div>
+              <span className="text-[11px] text-zinc-400">
+                Click any module to launch
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-semibold">
+              {/* Category 1: Revenue & Cash Control */}
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-3 space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block px-1">
+                  💰 Revenue & Cash Control
+                </span>
+                <button
+                  onClick={() => { setActiveTab('finance'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'finance' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>1. Financials & Anti-Fake Alert</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('plans'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'plans' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>2. Plans & Pricing</span>
+                  </div>
+                  <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">
+                    {activePlans.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (!hasFeature('ptTrainerScheduling')) {
+                      openUpgradeModal('ptTrainerScheduling');
+                    } else {
+                      setActiveTab('trainers');
+                      setIsModulesOpen(false);
+                    }
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'trainers' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
+                    <span>3. PT Commissions</span>
+                  </div>
+                  {!hasFeature('ptTrainerScheduling') ? (
+                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
+                      🔒 Growth
+                    </span>
+                  ) : (
+                    <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">
+                      {trainerCommissions.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('inventory'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'inventory' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Package className="w-3.5 h-3.5 text-blue-400" />
+                    <span>4. Pro-Shop & Inventory</span>
+                  </div>
+                  {lowStockCount > 0 ? (
+                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                      {lowStockCount} Low
+                    </span>
+                  ) : (
+                    <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">
+                      {retailItems.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Category 2: Front-Desk & Physical Operations */}
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-3 space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 block px-1">
+                  👥 Front-Desk & Operations
+                </span>
+
+                <button
+                  onClick={() => { setActiveTab('staff'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'staff' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                    <span>6. Staff & Shift PINs</span>
+                  </div>
+                  <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">
+                    {staffList.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('members'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'members' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-blue-400" />
+                    <span>7. Member Directory</span>
+                  </div>
+                  <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">
+                    {members.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasFeature('turnstileGateApi')) {
+                      openUpgradeModal('turnstileGateApi');
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer hover:bg-zinc-800 text-zinc-300 border border-dashed border-purple-500/30"
+                >
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-purple-400" />
+                    <span>10. Turnstile Barriers</span>
+                  </div>
+                  <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded text-[9px] font-black uppercase">
+                    Enterprise
+                  </span>
+                </button>
+              </div>
+
+              {/* Category 3: Growth & AI Intelligence */}
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-3 space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 block px-1">
+                  ⚡ Growth & AI Intelligence
+                </span>
+
+                <button
+                  onClick={() => { setActiveTab('churn'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'churn' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                    <span>5. At-Risk Churn Radar</span>
+                  </div>
+                  <span className="bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                    {atRiskMembers.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('whatsapp'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'whatsapp' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-3.5 h-3.5 text-purple-400" />
+                    <span>8. WhatsApp AI Auditor</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('referrals'); setIsModulesOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between cursor-pointer ${
+                    activeTab === 'referrals' ? 'bg-red-600 text-white font-bold' : 'hover:bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Gift className="w-3.5 h-3.5 text-purple-400" />
+                    <span>9. Viral & Referral Engine</span>
+                  </div>
+                  {activeTenant.referralProgram?.enabled ? (
+                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded-full text-[9px] font-bold">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="bg-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded-full text-[9px]">
+                      Off
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {staffCreatedSuccess && (
@@ -3011,7 +3173,7 @@ export default function OwnerPage() {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <h4 className="font-bold text-white text-sm">
-                      Layer 1: Local-First Offline Engine (ACTIVE)
+                      Layer 1: Zero-Downtime Local Engine (NEPA & Blackout Resilient)
                     </h4>
                   </div>
                   <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
