@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { BulkMemberImportModal } from '@/components/BulkMemberImportModal';
+import { FormattedNumberInput } from '@/components/FormattedNumberInput';
 
 interface ChatMessage {
   id: string;
@@ -2043,18 +2044,14 @@ export default function OwnerPage() {
                     <label className="font-bold text-zinc-300 block">
                       New Friend Sign-Up Discount (₦)
                     </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-zinc-500 font-bold">₦</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={500}
-                        required
-                        value={refFriendDiscount}
-                        onChange={(e) => setRefFriendDiscount(Number(e.target.value))}
-                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-xl py-2.5 pl-8 pr-3 text-white font-mono font-bold focus:outline-none"
-                      />
-                    </div>
+                    <FormattedNumberInput
+                      value={refFriendDiscount}
+                      onChange={(val) => setRefFriendDiscount(val)}
+                      prefix="₦"
+                      emptyOnZero
+                      placeholder="e.g. 2,000"
+                      className="bg-zinc-950 border-zinc-800 focus:border-purple-500 font-bold"
+                    />
                     <p className="text-[10px] text-zinc-500">
                       Deducted from friend's first month registration at front desk or online.
                     </p>
@@ -2066,16 +2063,15 @@ export default function OwnerPage() {
                       Referrer Reward Days (Free Workout Days)
                     </label>
                     <div className="relative">
-                      <input
-                        type="number"
+                      <FormattedNumberInput
+                        value={refRewardDays}
+                        onChange={(val) => setRefRewardDays(val)}
                         min={1}
                         max={90}
-                        required
-                        value={refRewardDays}
-                        onChange={(e) => setRefRewardDays(Number(e.target.value))}
-                        className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-xl p-2.5 text-white font-mono font-bold focus:outline-none"
+                        placeholder="e.g. 7"
+                        className="bg-zinc-950 border-zinc-800 focus:border-purple-500 font-bold pr-14"
                       />
-                      <span className="absolute right-3 top-2.5 text-zinc-500 text-[11px] font-semibold">Days</span>
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-[11px] font-semibold pointer-events-none select-none">Days</span>
                     </div>
                     <p className="text-[10px] text-zinc-500">
                       Days added to referring member's subscription expiration date.
@@ -2624,25 +2620,25 @@ export default function OwnerPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Units Received</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
+                    <FormattedNumberInput
                       value={restockUnits}
-                      onChange={(e) => setRestockUnits(Number(e.target.value))}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(val) => setRestockUnits(val)}
+                      min={1}
+                      emptyOnZero
+                      placeholder="e.g. 24"
+                      className="focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Wholesale Cost / Unit (₦)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      required
+                    <FormattedNumberInput
                       value={restockCostPerUnit}
-                      onChange={(e) => setRestockCostPerUnit(Number(e.target.value))}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(val) => setRestockCostPerUnit(val)}
+                      prefix="₦"
+                      emptyOnZero
+                      placeholder="e.g. 160"
+                      className="focus:ring-blue-500"
                     />
                   </div>
                 </div>
@@ -2770,25 +2766,25 @@ export default function OwnerPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Wholesale Cost (₦)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      required
+                    <FormattedNumberInput
                       value={newSkuCost}
-                      onChange={(e) => setNewSkuCost(Number(e.target.value))}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      onChange={(val) => setNewSkuCost(val)}
+                      prefix="₦"
+                      emptyOnZero
+                      placeholder="e.g. 150"
+                      className="focus:ring-emerald-500"
                     />
                   </div>
 
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Counter Selling Price (₦)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      required
+                    <FormattedNumberInput
                       value={newSkuPrice}
-                      onChange={(e) => setNewSkuPrice(Number(e.target.value))}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      onChange={(val) => setNewSkuPrice(val)}
+                      prefix="₦"
+                      emptyOnZero
+                      placeholder="e.g. 300"
+                      className="focus:ring-emerald-500"
                     />
                   </div>
                 </div>
@@ -2796,25 +2792,23 @@ export default function OwnerPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Opening Stock (Units)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      required
+                    <FormattedNumberInput
                       value={newSkuStock}
-                      onChange={(e) => setNewSkuStock(Number(e.target.value))}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      onChange={(val) => setNewSkuStock(val)}
+                      emptyOnZero
+                      placeholder="e.g. 24"
+                      className="focus:ring-emerald-500"
                     />
                   </div>
 
                   <div>
                     <label className="font-semibold text-zinc-300 block mb-1">Low-Stock Alert Level</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
+                    <FormattedNumberInput
                       value={newSkuThreshold}
-                      onChange={(e) => setNewSkuThreshold(Number(e.target.value))}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      onChange={(val) => setNewSkuThreshold(val)}
+                      min={1}
+                      placeholder="e.g. 5"
+                      className="focus:ring-emerald-500"
                     />
                   </div>
                 </div>
@@ -2970,20 +2964,11 @@ export default function OwnerPage() {
                         <label className="font-semibold text-zinc-300 block mb-1">
                           Actual Physical Count in Fridge / Shelf
                         </label>
-                        <input
-                          type="number"
-                          min="0"
+                        <FormattedNumberInput
                           value={auditPhysicalCount}
                           placeholder={`Expected: ${targetItem.inStock}`}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === '') {
-                              setAuditPhysicalCount('');
-                            } else {
-                              setAuditPhysicalCount(Math.max(0, parseInt(val, 10) || 0));
-                            }
-                          }}
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono text-base focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          onChange={(val) => setAuditPhysicalCount(val)}
+                          className="focus:ring-amber-500 text-sm font-mono"
                         />
                       </div>
 
@@ -3099,18 +3084,14 @@ export default function OwnerPage() {
                   <label className="font-semibold text-zinc-300 block mb-1">
                     Selling Price in Naira (₦)
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-zinc-500 font-bold">₦</span>
-                    <input
-                      type="number"
-                      required
-                      min="100"
-                      step="100"
-                      value={planFormPrice}
-                      onChange={(e) => setPlanFormPrice(Number(e.target.value))}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-8 pr-3 py-2.5 text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
+                  <FormattedNumberInput
+                    value={planFormPrice}
+                    onChange={(val) => setPlanFormPrice(val)}
+                    prefix="₦"
+                    emptyOnZero
+                    placeholder="e.g. 35,000"
+                    className="focus:ring-emerald-500 font-bold"
+                  />
                 </div>
               </div>
 
@@ -3119,13 +3100,12 @@ export default function OwnerPage() {
                   <label className="font-semibold text-zinc-300 block mb-1">
                     Duration (Calendar Days)
                   </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
+                  <FormattedNumberInput
                     value={planFormDuration}
-                    onChange={(e) => setPlanFormDuration(Number(e.target.value))}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    onChange={(val) => setPlanFormDuration(val)}
+                    min={1}
+                    placeholder="e.g. 30"
+                    className="focus:ring-emerald-500 font-mono"
                   />
                   <span className="text-[10px] text-zinc-500 mt-1 block">
                     1 for daily pass, 30 for monthly, 90 for quarterly, 365 for annual
@@ -3136,12 +3116,12 @@ export default function OwnerPage() {
                   <label className="font-semibold text-zinc-300 block mb-1">
                     Included PT Sessions
                   </label>
-                  <input
-                    type="number"
-                    min="0"
+                  <FormattedNumberInput
                     value={planFormPtSessions}
-                    onChange={(e) => setPlanFormPtSessions(Number(e.target.value))}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    onChange={(val) => setPlanFormPtSessions(val)}
+                    min={0}
+                    placeholder="e.g. 4"
+                    className="focus:ring-emerald-500 font-mono"
                   />
                   <span className="text-[10px] text-zinc-500 mt-1 block">
                     0 if standard gym-only; &gt; 0 for personal trainer bundle

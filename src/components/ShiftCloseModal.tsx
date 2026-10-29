@@ -17,6 +17,7 @@ import {
   ArrowRight,
   ShieldAlert,
 } from 'lucide-react';
+import { FormattedNumberInput } from '@/components/FormattedNumberInput';
 
 interface ShiftCloseModalProps {
   isOpen: boolean;
@@ -314,19 +315,13 @@ export function ShiftCloseModal({ isOpen, onClose, onLockTerminal }: ShiftCloseM
                       Fill Exact (₦{targetNetExpected.toLocaleString()})
                     </button>
                   </div>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-3 text-zinc-400 font-bold text-lg">₦</span>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="100"
-                      value={cashCountedInput}
-                      onChange={(e) => setCashCountedInput(e.target.value)}
-                      placeholder="e.g. 21500"
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-9 pr-4 py-3 text-lg font-black text-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono tracking-wide"
-                    />
-                  </div>
+                  <FormattedNumberInput
+                    value={cashCountedInput}
+                    onChange={(val) => setCashCountedInput(val === 0 ? '' : val.toString())}
+                    prefix="₦"
+                    placeholder="e.g. 21,500"
+                    className="border-zinc-700 py-3 text-lg font-black focus:ring-amber-500 tracking-wide"
+                  />
 
                   {/* Live Variance Calculation Badge */}
                   {cashCountedInput !== '' && (

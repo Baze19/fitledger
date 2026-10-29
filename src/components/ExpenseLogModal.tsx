@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ExpenseCategory, ExpenseLog, StaffUser } from '@/types';
 import { Fuel, Wrench, Sparkles, Droplets, Receipt, X, Check, Camera, AlertCircle } from 'lucide-react';
 import { CameraCaptureModal } from '@/components/CameraCaptureModal';
+import { FormattedNumberInput } from '@/components/FormattedNumberInput';
 
 interface ExpenseLogModalProps {
   isOpen: boolean;
@@ -137,20 +138,16 @@ export function ExpenseLogModal({
           {/* Amount Input */}
           <div>
             <label className="font-semibold text-zinc-300 block mb-1">Amount Paid (₦)</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-2.5 font-bold text-zinc-500 text-sm">₦</span>
-              <input
-                type="text"
-                required
-                value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                  setErrorMsg(null);
-                }}
-                placeholder="15,000"
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl pl-8 pr-3 py-2.5 text-white font-mono font-bold text-sm focus:outline-none"
-              />
-            </div>
+            <FormattedNumberInput
+              value={amount}
+              onChange={(val) => {
+                setAmount(val === 0 ? '' : val.toString());
+                setErrorMsg(null);
+              }}
+              prefix="₦"
+              placeholder="e.g. 15,000"
+              className="focus:ring-amber-500 font-bold"
+            />
           </div>
 
           {/* Description */}
