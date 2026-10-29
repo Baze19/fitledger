@@ -116,8 +116,7 @@ export default function OwnerPage() {
   const [planFormIsActive, setPlanFormIsActive] = useState<boolean>(true);
   const [planToast, setPlanToast] = useState<string | null>(null);
 
-  // Cloud Database Guide Modal State & Collapsible Modules Nav
-  const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
+  // Collapsible Modules Navigation State
   const [isModulesOpen, setIsModulesOpen] = useState(false);
 
   const openAddPlanModal = () => {
@@ -446,23 +445,11 @@ export default function OwnerPage() {
           </div>
         </div>
 
-        {/* Global Navigation & Data Engine Shortcuts */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-          {/* Zero-Downtime Engine Status */}
-          <button
-            type="button"
-            onClick={() => setIsDatabaseModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer text-zinc-300 transition"
-            title="NEPA & Offline Protection: Zero-Downtime Local Engine is Active"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>{isCloudConnected ? 'Cloud PostgreSQL • Synced' : '🛡️ Zero-Downtime Engine: Active'}</span>
-          </button>
-
+        {/* Global Navigation Shortcuts */}
+        <div className="flex items-center gap-2 text-xs font-bold flex-nowrap">
           <Link
             href="/terminal"
-            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap"
           >
             <span>🖥️ Front-Desk Terminal</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -473,14 +460,14 @@ export default function OwnerPage() {
               setPasswordChangeSuccess(null);
               setPasswordChangeError(null);
             }}
-            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
             <KeyRound className="w-3.5 h-3.5 text-amber-400" />
             <span>Change Password</span>
           </button>
           <Link
             href="/login"
-            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-red-950/60 border border-zinc-800 hover:border-red-900 text-zinc-400 hover:text-red-300 transition flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-red-950/60 border border-zinc-800 hover:border-red-900 text-zinc-400 hover:text-red-300 transition flex items-center gap-1.5 whitespace-nowrap"
           >
             <span>Sign Out</span>
           </Link>
@@ -3139,127 +3126,7 @@ export default function OwnerPage() {
 
 
 
-      {/* ============================================================== */}
-      {/* CLOUD DATABASE & PERSISTENCE ARCHITECTURE MODAL                */}
-      {/* ============================================================== */}
-      {isDatabaseModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl animate-scaleIn max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-blue-400" />
-                <div>
-                  <h3 className="font-extrabold text-base text-white">
-                    FitLedger Data Persistence & Cloud Architecture
-                  </h3>
-                  <span className="text-[11px] text-zinc-400">
-                    Local-First Browser Engine + Supabase Cloud PostgreSQL
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsDatabaseModalOpen(false)}
-                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="space-y-4 text-xs">
-              {/* Architecture Layer 1: Local-First */}
-              <div className="bg-zinc-900 border border-emerald-500/30 rounded-2xl p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <h4 className="font-bold text-white text-sm">
-                      Layer 1: Zero-Downtime Local Engine (NEPA & Blackout Resilient)
-                    </h4>
-                  </div>
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                    Running Live
-                  </span>
-                </div>
-                <p className="text-zinc-300 leading-relaxed">
-                  All real members registered, custom pricing plans created, cash transactions recorded, and barcode scans are <strong>saved locally in browser persistent storage</strong>. They survive page refreshes, power cuts, and browser restarts.
-                </p>
-                <div className="flex items-center gap-4 text-[11px] text-zinc-400 pt-1 font-mono">
-                  <span>• Members: <strong className="text-white">{members.length}</strong></span>
-                  <span>• Pricing Tiers: <strong className="text-white">{activePlans.length}</strong></span>
-                  <span>• Check-ins: <strong className="text-white">{checkIns.length}</strong></span>
-                </div>
-              </div>
-
-              {/* Architecture Layer 2: Supabase Cloud PostgreSQL */}
-              <div className="bg-zinc-900 border border-blue-500/30 rounded-2xl p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-blue-400" />
-                    <h4 className="font-bold text-white text-sm">
-                      Layer 2: Cloud Database (Supabase PostgreSQL)
-                    </h4>
-                  </div>
-                  <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
-                    Pan-African Multi-Branch Sync
-                  </span>
-                </div>
-                <p className="text-zinc-300 leading-relaxed">
-                  For cross-device synchronization between front-desk tablets, manager laptops, and the Owner Suite across multiple branch locations (Lekki, Ikeja, Surulere, Abuja), configure your Supabase project credentials in <code className="bg-zinc-950 px-1.5 py-0.5 rounded text-zinc-200">.env.local</code>:
-                </p>
-
-                <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-xl font-mono text-[11px] text-zinc-300 space-y-1">
-                  <p className="text-zinc-500"># In .env.local on your server / Vercel</p>
-                  <p><span className="text-blue-400">NEXT_PUBLIC_SUPABASE_URL</span>=https://your-project.supabase.co</p>
-                  <p><span className="text-blue-400">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</p>
-                </div>
-              </div>
-
-              {/* Ready Table Checklist */}
-              <div className="border border-zinc-800 rounded-2xl p-4 space-y-2 bg-zinc-900/60">
-                <h5 className="font-bold text-white text-xs uppercase tracking-wider">
-                  Supported PostgreSQL Schema Tables
-                </h5>
-                <div className="grid grid-cols-2 gap-2 text-zinc-400 font-mono text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>gym_tenants (Multi-branch)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>membership_plans</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>members & barcode_tokens</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>attendance_logs</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>pos_transactions (Bank/Cash)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>staff_pins & audit_trail</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end pt-2 border-t border-zinc-800">
-              <button
-                type="button"
-                onClick={() => setIsDatabaseModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition cursor-pointer"
-              >
-                Close Guide
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
