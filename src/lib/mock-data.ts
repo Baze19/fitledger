@@ -48,45 +48,8 @@ export const INITIAL_PLANS: Plan[] = [
   },
 ];
 
-// Pro-Shop Retail Counter Inventory (Water, Energy Drinks)
-export const INITIAL_RETAIL_ITEMS: RetailItem[] = [
-  {
-    id: 'ret_water',
-    name: 'Eva Natural Water (750ml)',
-    category: 'beverage',
-    costPrice: 160,
-    price: 400,
-    inStock: 36,
-    lowStockThreshold: 12,
-    supplierName: 'NBC Coca-Cola Wholesaler, Ikorodu',
-    lastRestockedDate: '2026-10-21',
-    icon: '💧',
-  },
-  {
-    id: 'ret_energy',
-    name: 'Monster Energy Drink (500ml)',
-    category: 'beverage',
-    costPrice: 950,
-    price: 1800,
-    inStock: 18,
-    lowStockThreshold: 6,
-    supplierName: 'Chi Limited Direct Depot, Isolo',
-    lastRestockedDate: '2026-10-20',
-    icon: '⚡',
-  },
-  {
-    id: 'ret_protein',
-    name: 'Optimum Whey Protein Shake (Ready-to-drink)',
-    category: 'supplement',
-    costPrice: 2200,
-    price: 4000,
-    inStock: 12,
-    lowStockThreshold: 5,
-    supplierName: 'HealthPlus Pharmacy Distributor, Victoria Island',
-    lastRestockedDate: '2026-10-18',
-    icon: '🥤',
-  },
-];
+// Pro-Shop Retail Counter Inventory (Pristine Empty State for Real Testing)
+export const INITIAL_RETAIL_ITEMS: RetailItem[] = [];
 
 // Pristine Operational State
 export const INITIAL_TENANTS: GymTenant[] = [

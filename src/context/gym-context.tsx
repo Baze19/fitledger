@@ -179,6 +179,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     TENANTS: 'fitledger_tenants_store_v4',
     OWNERS: 'fitledger_owners_store_v4',
     STAFF: 'fitledger_staff_store_v4',
+    RETAIL: 'fitledger_retail_store_v4',
     IS_DEMO: 'fitledger_is_demo_mode_v4',
   };
 
@@ -236,6 +237,14 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(savedCloseouts);
         if (Array.isArray(parsed)) {
           setShiftCloseouts(parsed);
+        }
+      }
+
+      const savedRetail = localStorage.getItem(STORAGE_KEYS.RETAIL);
+      if (savedRetail) {
+        const parsed = JSON.parse(savedRetail);
+        if (Array.isArray(parsed)) {
+          setRetailItems(parsed);
         }
       }
 
@@ -332,6 +341,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.SHIFT_CLOSEOUTS, JSON.stringify(shiftCloseouts));
     } catch (e) {}
   }, [shiftCloseouts]);
+
+  useEffect(() => {
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.RETAIL, JSON.stringify(retailItems));
+    } catch (e) {}
+  }, [retailItems]);
 
   useEffect(() => {
     if (!isHydratedRef.current || typeof window === 'undefined') return;
@@ -981,7 +997,23 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sellRetailItem = (itemId: string, paymentMethod: PaymentMethod): Transaction => {
-    const item = retailItems.find((r) => r.id === itemId) || retailItems[0];
+    const item = retailItems.find((r) => r.id === itemId);
+    if (!item) {
+      return {
+        id: `tx_ret_${Date.now()}`,
+        tenantId: activeTenant.id,
+        memberId: 'mem_walkin',
+        memberName: 'Walk-in Guest',
+        memberCode: 'RETAIL',
+        amount: 0,
+        paymentMethod,
+        reference: `POS_${Math.floor(100000 + Math.random() * 900000)}`,
+        timestamp: 'Just now',
+        planName: 'Pro-Shop Item',
+        receivedByStaffName: activeStaff.fullName,
+        status: 'verified',
+      };
+    }
 
     setRetailItems((prev) =>
       prev.map((r) => (r.id === itemId && r.inStock > 0 ? { ...r, inStock: r.inStock - 1 } : r))

@@ -225,26 +225,26 @@ export default function OwnerPage() {
 
   // Inventory Modals & Form State
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
-  const [restockItemId, setRestockItemId] = useState(retailItems[0]?.id || 'ret_water');
-  const [restockUnits, setRestockUnits] = useState(24);
-  const [restockCostPerUnit, setRestockCostPerUnit] = useState(160);
-  const [restockSupplier, setRestockSupplier] = useState('NBC Coca-Cola Wholesaler, Ikorodu');
+  const [restockItemId, setRestockItemId] = useState(retailItems[0]?.id || '');
+  const [restockUnits, setRestockUnits] = useState(10);
+  const [restockCostPerUnit, setRestockCostPerUnit] = useState(0);
+  const [restockSupplier, setRestockSupplier] = useState('');
   const [restockSuccess, setRestockSuccess] = useState<string | null>(null);
 
   const [isAddSkuModalOpen, setIsAddSkuModalOpen] = useState(false);
   const [newSkuName, setNewSkuName] = useState('');
   const [newSkuCategory, setNewSkuCategory] = useState<'beverage' | 'supplement' | 'daily_pass' | 'merchandise'>('beverage');
-  const [newSkuCost, setNewSkuCost] = useState(200);
-  const [newSkuPrice, setNewSkuPrice] = useState(400);
-  const [newSkuStock, setNewSkuStock] = useState(24);
-  const [newSkuThreshold, setNewSkuThreshold] = useState(10);
+  const [newSkuCost, setNewSkuCost] = useState(0);
+  const [newSkuPrice, setNewSkuPrice] = useState(0);
+  const [newSkuStock, setNewSkuStock] = useState(0);
+  const [newSkuThreshold, setNewSkuThreshold] = useState(5);
   const [newSkuSupplier, setNewSkuSupplier] = useState('');
   const [newSkuIcon, setNewSkuIcon] = useState('📦');
   const [skuCreatedSuccess, setSkuCreatedSuccess] = useState<string | null>(null);
 
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
-  const [auditItemId, setAuditItemId] = useState(retailItems[0]?.id || 'ret_water');
-  const [auditPhysicalCount, setAuditPhysicalCount] = useState<number | string>(18);
+  const [auditItemId, setAuditItemId] = useState(retailItems[0]?.id || '');
+  const [auditPhysicalCount, setAuditPhysicalCount] = useState<number | string>(0);
   const [auditNotes, setAuditNotes] = useState('');
   const [auditResult, setAuditResult] = useState<{ discrepancy: number; isBalanced: boolean } | null>(null);
 
@@ -1364,7 +1364,26 @@ export default function OwnerPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60">
-                  {retailItems.map((item) => {
+                  {retailItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-14 text-center">
+                        <div className="flex flex-col items-center justify-center gap-2.5">
+                          <span className="text-3xl">🛒</span>
+                          <p className="font-bold text-white text-sm">No Pro-Shop Inventory Registered</p>
+                          <p className="text-zinc-500 text-xs max-w-sm">
+                            Click &ldquo;+ Add Product SKU&rdquo; above to register water bottles, drinks, energy bars, or merchandise for live testing.
+                          </p>
+                          <button
+                            onClick={() => setIsAddSkuModalOpen(true)}
+                            className="mt-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs transition cursor-pointer"
+                          >
+                            + Add Product SKU
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    retailItems.map((item) => {
                     const margin = item.price - item.costPrice;
                     const marginPct = item.price > 0 ? Math.round((margin / item.price) * 100) : 0;
                     const isLow = item.inStock <= item.lowStockThreshold && item.category !== 'daily_pass';
@@ -1450,7 +1469,8 @@ export default function OwnerPage() {
                         </td>
                       </tr>
                     );
-                  })}
+                  })
+                )}
                 </tbody>
               </table>
             </div>
@@ -2548,6 +2568,26 @@ export default function OwnerPage() {
                   Done
                 </button>
               </div>
+            ) : retailItems.length === 0 ? (
+              <div className="py-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-zinc-800 text-blue-400 flex items-center justify-center mx-auto text-xl">
+                  📦
+                </div>
+                <h4 className="text-white font-bold text-sm">No Pro-Shop Inventory Found</h4>
+                <p className="text-zinc-400 text-xs max-w-xs mx-auto">
+                  You haven&apos;t registered any retail products yet. Create your real water, drink, or supplement products first to log restock deliveries.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRestockModalOpen(false);
+                    setIsAddSkuModalOpen(true);
+                  }}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  + Add First Product SKU
+                </button>
+              </div>
             ) : (
               <form
                 onSubmit={(e) => {
@@ -2856,6 +2896,26 @@ export default function OwnerPage() {
                   Close Audit
                 </button>
               </div>
+            ) : retailItems.length === 0 ? (
+              <div className="py-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-zinc-800 text-amber-400 flex items-center justify-center mx-auto text-xl">
+                  📦
+                </div>
+                <h4 className="text-white font-bold text-sm">No Pro-Shop Inventory Found</h4>
+                <p className="text-zinc-400 text-xs max-w-xs mx-auto">
+                  You haven&apos;t registered any retail items yet. Create your real water, drink, or supplement products first to perform stock audits.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAuditModalOpen(false);
+                    setIsAddSkuModalOpen(true);
+                  }}
+                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-xl text-xs transition cursor-pointer"
+                >
+                  + Add First Product SKU
+                </button>
+              </div>
             ) : (
               <form
                 onSubmit={(e) => {
@@ -2888,6 +2948,7 @@ export default function OwnerPage() {
 
                 {(() => {
                   const targetItem = retailItems.find((r) => r.id === auditItemId) || retailItems[0];
+                  if (!targetItem) return null;
                   const numericCount = auditPhysicalCount === '' ? targetItem.inStock : Number(auditPhysicalCount);
                   const diff = numericCount - targetItem.inStock;
                   const leakageNaira = Math.abs(diff) * targetItem.price;
