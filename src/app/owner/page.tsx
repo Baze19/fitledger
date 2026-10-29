@@ -477,12 +477,8 @@ export default function OwnerPage() {
       {/* Sleek Compact Navigation Bar with Collapsible Module Drawer */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2 bg-zinc-900/90 border border-zinc-800/80 p-2 rounded-2xl backdrop-blur-md">
-          {/* Left: Active Module Identifier & Top 3 Daily Shortcuts */}
+          {/* Left: Top 3 Daily Operational Shortcuts */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
-            <span className="text-[11px] text-zinc-500 font-semibold uppercase tracking-wider pl-1 pr-2 border-r border-zinc-800">
-              Module:
-            </span>
-
             {/* Quick 1-Click Primary Tabs */}
             <button
               onClick={() => setActiveTab('finance')}
@@ -522,13 +518,13 @@ export default function OwnerPage() {
               <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.2 rounded-full text-[10px]">{activePlans.length}</span>
             </button>
 
-            {/* If the current active tab is one of the secondary tabs, display it prominently */}
+            {/* If the current active tab is one of the other tools, display it prominently */}
             {!['finance', 'members', 'plans'].includes(activeTab) && (
               <span className="px-3.5 py-1.5 rounded-xl bg-red-600 text-white shadow-lg shadow-red-600/30 flex items-center gap-1.5 animate-fadeIn">
                 <span>
                   {activeTab === 'trainers' && '3. PT Commissions'}
                   {activeTab === 'inventory' && '4. Pro-Shop & Inventory'}
-                  {activeTab === 'churn' && '5. At-Risk Churn Radar'}
+                  {activeTab === 'churn' && '5. Inactive Members (Retention Alert)'}
                   {activeTab === 'staff' && '6. Staff & Shift PINs'}
                   {activeTab === 'whatsapp' && '8. WhatsApp AI Auditor'}
                   {activeTab === 'referrals' && '9. Viral & Referral Engine'}
@@ -537,7 +533,7 @@ export default function OwnerPage() {
             )}
           </div>
 
-          {/* Right: Collapsible Toggle Button */}
+          {/* Right: Collapsible Management Tools Toggle */}
           <button
             type="button"
             onClick={() => setIsModulesOpen(!isModulesOpen)}
@@ -548,23 +544,23 @@ export default function OwnerPage() {
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5 text-red-500" />
-            <span>{isModulesOpen ? 'Hide Modules' : 'All Modules (10)'}</span>
+            <span>{isModulesOpen ? 'Close Menu' : 'Management Tools (10)'}</span>
             {isModulesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
 
-        {/* Collapsible Drawer: All 10 Modules Categorized Cleanly */}
+        {/* Collapsible Drawer: All 10 Tools Categorized Cleanly */}
         {isModulesOpen && (
           <div className="bg-zinc-950/95 border border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-2xl backdrop-blur-xl animate-scaleIn space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
               <div className="flex items-center gap-2">
                 <LayoutGrid className="w-4 h-4 text-red-500" />
                 <h4 className="font-extrabold text-xs uppercase tracking-wider text-white">
-                  Owner Business Suite • All Modules
+                  Owner Business Suite • Management Tools
                 </h4>
               </div>
               <span className="text-[11px] text-zinc-400">
-                Click any module to launch
+                Click any tool to open
               </span>
             </div>
 
@@ -720,7 +716,7 @@ export default function OwnerPage() {
                 >
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-                    <span>5. At-Risk Churn Radar</span>
+                    <span>5. Inactive Members (Retention Alert)</span>
                   </div>
                   <span className="bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
                     {atRiskMembers.length}
@@ -1499,10 +1495,10 @@ export default function OwnerPage() {
           <div className="bg-zinc-900 border border-red-500/30 p-5 rounded-3xl space-y-1">
             <h2 className="text-base font-black text-white flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
-              <span>At-Risk Member Radar (Retention Protection)</span>
+              <span>Inactive Members Watchlist (Retention & Win-Back)</span>
             </h2>
             <p className="text-xs text-zinc-400">
-              Members who haven&apos;t scanned in for 10+ days or whose pass expired. 1-click WhatsApp incentives reduce gym drop-off by 35%.
+              Members who haven&apos;t scanned in for 10+ days or whose pass expired. 1-click WhatsApp incentives bring inactive members back before they quit.
             </p>
           </div>
 
