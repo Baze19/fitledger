@@ -67,6 +67,12 @@ export const INITIAL_TENANTS: GymTenant[] = [
     status: 'trial',
     joinedDate: '2026-10-28',
     trialExpiresAt: '2026-11-11',
+    bankAccount: {
+      bankName: 'Guaranty Trust Bank (GTBank)',
+      accountNumber: '0123456789',
+      accountName: 'Dollbass Fitness Ltd',
+      isLiveFeedActive: false,
+    },
   },
 ];
 

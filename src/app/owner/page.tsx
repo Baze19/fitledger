@@ -91,6 +91,7 @@ export default function OwnerPage() {
     hasFeature,
     openUpgradeModal,
     updateTenantReferralProgram,
+    updateTenantBankAccount,
     plans,
     activePlans,
     addPlan,
@@ -119,6 +120,14 @@ export default function OwnerPage() {
 
   // Collapsible Modules Navigation State
   const [isModulesOpen, setIsModulesOpen] = useState(false);
+
+  // Bank Account Modal State
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [bankName, setBankName] = useState(activeTenant.bankAccount?.bankName || 'Guaranty Trust Bank (GTBank)');
+  const [accountNumber, setAccountNumber] = useState(activeTenant.bankAccount?.accountNumber || '0123456789');
+  const [accountName, setAccountName] = useState(activeTenant.bankAccount?.accountName || activeTenant.name);
+  const [isLiveFeedActive, setIsLiveFeedActive] = useState(activeTenant.bankAccount?.isLiveFeedActive ?? false);
+  const [bankSuccessMsg, setBankSuccessMsg] = useState('');
 
   const openAddPlanModal = () => {
     setEditingPlan(null);
@@ -828,73 +837,108 @@ export default function OwnerPage() {
           <div className="bg-zinc-900 border border-blue-500/30 rounded-3xl p-5 space-y-4 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
                   <h3 className="font-extrabold text-sm text-white">
                     Direct Bank Feed & Anti-Fake Alert Verification
                   </h3>
-                  <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
-                    Providus Bank API Active
-                  </span>
+                  {activeTenant.bankAccount?.isLiveFeedActive ? (
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                      Paystack / API Feed Active
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
+                      Commercial Bank Settlement
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   Protects counter staff against fake SMS alerts. Every payment is checked directly against live bank settlement.
                 </p>
               </div>
 
-              <div className="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl text-[11px] text-zinc-400 font-mono">
-                Dedicated Virtual Acc: <strong className="text-white">990234123</strong> (Wema/Providus)
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl text-[11px] text-zinc-300">
+                  <span className="text-zinc-500 mr-1.5">Gym Bank:</span>
+                  <strong className="text-white">{activeTenant.bankAccount?.bankName || 'GTBank'}</strong> • <strong className="text-emerald-400 font-mono">{activeTenant.bankAccount?.accountNumber || '0123456789'}</strong> <span className="text-zinc-400 hidden md:inline">({activeTenant.bankAccount?.accountName || activeTenant.name})</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setBankName(activeTenant.bankAccount?.bankName || 'Guaranty Trust Bank (GTBank)');
+                    setAccountNumber(activeTenant.bankAccount?.accountNumber || '0123456789');
+                    setAccountName(activeTenant.bankAccount?.accountName || activeTenant.name);
+                    setIsLiveFeedActive(activeTenant.bankAccount?.isLiveFeedActive ?? false);
+                    setBankSuccessMsg('');
+                    setIsBankModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition border border-zinc-700 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Building className="w-3.5 h-3.5 text-blue-400" />
+                  Configure Bank
+                </button>
               </div>
             </div>
 
             <div className="space-y-2.5">
-              {bankTransfers.map((bt) => (
-                <div
-                  key={bt.id}
-                  className={`p-3.5 rounded-2xl border text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-                    bt.status === 'settled'
-                      ? 'bg-zinc-950 border-zinc-800'
-                      : 'bg-red-500/10 border-red-500/40'
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-white text-sm">₦{bt.amount.toLocaleString()}</span>
-                      <span className="text-zinc-400 font-semibold">• {bt.senderName}</span>
+              {bankTransfers.length === 0 ? (
+                <div className="p-8 rounded-2xl border border-dashed border-zinc-800 text-center bg-zinc-950/40">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto mb-2">
+                    <Building className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-white">No bank transfers logged today</h4>
+                  <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
+                    When front desk records payments via Bank Transfer, customer name, payment amounts, and verified bank references appear here automatically.
+                  </p>
+                </div>
+              ) : (
+                bankTransfers.map((bt) => (
+                  <div
+                    key={bt.id}
+                    className={`p-3.5 rounded-2xl border text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                      bt.status === 'settled'
+                        ? 'bg-zinc-950 border-zinc-800'
+                        : 'bg-red-500/10 border-red-500/40'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-white text-sm">₦{bt.amount.toLocaleString()}</span>
+                        <span className="text-zinc-400 font-semibold">• {bt.senderName}</span>
+                        {bt.status === 'settled' ? (
+                          <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Settled in Bank
+                          </span>
+                        ) : (
+                          <span className="bg-red-500/20 text-red-400 border border-red-500/50 text-[10px] px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1 animate-pulse">
+                            <AlertTriangle className="w-3 h-3" /> FAKE ALERT RISK: ₦0.00 SETTLED
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-zinc-400 text-[11px]">
+                        Source: <span className="text-zinc-300">{bt.bankName}</span> • Ref: <span className="font-mono text-zinc-500">{bt.reference}</span> • Time: {bt.timestamp}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {bt.status === 'settled' ? (
-                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Settled in Bank
+                        <span className="text-emerald-400 text-[11px] font-mono">
+                          {bt.settledAt || 'API Webhook Confirmed'}
                         </span>
                       ) : (
-                        <span className="bg-red-500/20 text-red-400 border border-red-500/50 text-[10px] px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1 animate-pulse">
-                          <AlertTriangle className="w-3 h-3" /> FAKE ALERT RISK: ₦0.00 SETTLED
-                        </span>
+                        <button
+                          onClick={() => {
+                            setOverrideTransferId(bt.id);
+                            setOverridePin('');
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition cursor-pointer shadow-md shadow-red-600/30"
+                        >
+                          Override / Clear at Desk
+                        </button>
                       )}
                     </div>
-                    <p className="text-zinc-400 text-[11px]">
-                      Source: <span className="text-zinc-300">{bt.bankName}</span> • Ref: <span className="font-mono text-zinc-500">{bt.reference}</span> • Time: {bt.timestamp}
-                    </p>
                   </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {bt.status === 'settled' ? (
-                      <span className="text-emerald-400 text-[11px] font-mono">
-                        {bt.settledAt || 'API Webhook Confirmed'}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setOverrideTransferId(bt.id);
-                          setOverridePin('');
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition cursor-pointer shadow-md shadow-red-600/30"
-                      >
-                        Override / Clear at Desk
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -3027,6 +3071,142 @@ export default function OwnerPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
       />
+
+      {/* ============================================================== */}
+      {/* BANK ACCOUNT CONFIGURATION MODAL                               */}
+      {/* ============================================================== */}
+      {isBankModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Building className="w-5 h-5 text-blue-400" />
+                <div>
+                  <h3 className="font-black text-white text-base">Configure Gym Settlement Bank</h3>
+                  <p className="text-xs text-zinc-400">Direct member transfers into your real business account</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBankModalOpen(false)}
+                className="text-zinc-500 hover:text-white text-xs font-bold px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {bankSuccessMsg ? (
+              <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                </div>
+                <h4 className="font-extrabold text-white text-sm">Settlement Bank Saved!</h4>
+                <p className="text-xs text-zinc-300">{bankSuccessMsg}</p>
+                <button
+                  onClick={() => setIsBankModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateTenantBankAccount(activeTenant.id, {
+                    bankName: bankName.trim(),
+                    accountNumber: accountNumber.trim(),
+                    accountName: accountName.trim(),
+                    isLiveFeedActive,
+                  });
+                  setBankSuccessMsg(`Front desk terminal and bank audit trail will now route customer bank transfers to ${bankName} (${accountNumber}).`);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-zinc-300 leading-relaxed">
+                  💡 <strong className="text-white">Zero New Accounts Needed:</strong> You do not need to open a new account or switch POS. Enter your gym&apos;s existing commercial or merchant bank account (e.g., GTBank, Zenith, Access, Kuda, Moniepoint) so front desk staff can present it to customers immediately.
+                </div>
+
+                <div>
+                  <label className="font-semibold text-zinc-300 block mb-1">Bank Name</label>
+                  <select
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Guaranty Trust Bank (GTBank)">Guaranty Trust Bank (GTBank)</option>
+                    <option value="Zenith Bank">Zenith Bank</option>
+                    <option value="Access Bank">Access Bank</option>
+                    <option value="United Bank for Africa (UBA)">United Bank for Africa (UBA)</option>
+                    <option value="First Bank of Nigeria">First Bank of Nigeria</option>
+                    <option value="Moniepoint Microfinance Bank">Moniepoint MFB</option>
+                    <option value="OPay Digital Services">OPay Digital Services</option>
+                    <option value="Kuda Microfinance Bank">Kuda Bank</option>
+                    <option value="Providus Bank">Providus Bank</option>
+                    <option value="Wema Bank / ALAT">Wema Bank / ALAT</option>
+                    <option value="Stanbic IBTC Bank">Stanbic IBTC Bank</option>
+                    <option value="Fidelity Bank">Fidelity Bank</option>
+                    <option value="Sterling Bank">Sterling Bank</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">10-Digit NUBAN Account Number</label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      required
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 0123456789"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white font-mono text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-zinc-300 block mb-1">Beneficiary Account Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={accountName}
+                      onChange={(e) => setAccountName(e.target.value)}
+                      placeholder="e.g. Dollbass Fitness Ltd"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-between gap-3">
+                  <div>
+                    <span className="font-bold text-white block">Paystack / Bank Webhook Direct Feed</span>
+                    <span className="text-[11px] text-zinc-400">
+                      Auto-verify inbound transfers using Paystack Dedicated Virtual Account webhook
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isLiveFeedActive}
+                      onChange={(e) => setIsLiveFeedActive(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition shadow-lg shadow-blue-600/20 cursor-pointer"
+                  >
+                    Save Settlement Bank Configuration
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ============================================================== */}
       {/* PLAN ADD / EDIT MODAL                                          */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod, ExpenseLog, ShiftCloseout } from '@/types';
+import { Member, CheckIn, Transaction, AuditLog, StaffUser, ShiftSummary, Plan, GymTenant, OwnerAccount, BankTransferVerification, TrainerCommission, RetailItem, StockDelivery, PaymentMethod, ExpenseLog, ShiftCloseout, GymBankAccount } from '@/types';
 import { INITIAL_MEMBERS, INITIAL_STAFF, INITIAL_PLANS, INITIAL_CHECKINS, INITIAL_TRANSACTIONS, INITIAL_AUDIT_LOGS, INITIAL_TENANTS, INITIAL_OWNERS, INITIAL_BANK_TRANSFERS, INITIAL_TRAINER_COMMISSIONS, INITIAL_RETAIL_ITEMS, INITIAL_STOCK_DELIVERIES, INITIAL_EXPENSES, INITIAL_SHIFT_CLOSEOUTS } from '@/lib/mock-data';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { PlanTier, FeatureKey, canAccessFeature, getMaxMembersAllowed, PLAN_TIERS } from '@/lib/entitlements';
@@ -20,6 +20,7 @@ interface GymContextType {
   switchTenant: (tenantId: string) => void;
   addTenant: (data: Omit<GymTenant, 'id' | 'joinedDate'>) => GymTenant;
   updateTenantReferralProgram: (tenantId: string, settings: GymTenant['referralProgram']) => void;
+  updateTenantBankAccount: (tenantId: string, bankAccount: GymBankAccount) => void;
   updateTenantStatus: (tenantId: string, status: 'active' | 'trial' | 'suspended') => void;
   extendTenantTrial: (tenantId: string, days?: number) => void;
 
@@ -73,7 +74,16 @@ interface GymContextType {
   setScanResultIdle: () => void;
   checkInMember: (query: string, method?: 'qr_scan' | 'phone_lookup') => { success: boolean; member?: Member; reason?: string };
   recordSelfCheckIn: (memberIdOrCode: string) => { success: boolean; message: string };
-  registerMember: (data: { fullName: string; phoneNumber: string; planId: string; paymentMethod: Transaction['paymentMethod']; photoUrl?: string; referralCode?: string }) => Member;
+  registerMember: (data: {
+    fullName: string;
+    phoneNumber: string;
+    planId: string;
+    paymentMethod: Transaction['paymentMethod'];
+    photoUrl?: string;
+    referralCode?: string;
+    transferSenderName?: string;
+    transferReference?: string;
+  }) => Member;
   updateMemberPhoto: (memberIdOrCode: string, photoUrl: string) => void;
   bulkImportMembers: (items: { fullName: string; phoneNumber: string; status: 'active' | 'expired'; currentPlanId: string; subscriptionEndDate: string; remainingPtSessions: number }[]) => { count: number; importedCodes: string[] };
   renewMember: (memberId: string, planId: string, paymentMethod: Transaction['paymentMethod']) => void;
@@ -180,6 +190,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     OWNERS: 'fitledger_owners_store_v4',
     STAFF: 'fitledger_staff_store_v4',
     RETAIL: 'fitledger_retail_store_v4',
+    BANK_TRANSFERS: 'fitledger_transfers_store_v4',
     IS_DEMO: 'fitledger_is_demo_mode_v4',
   };
 
@@ -245,6 +256,14 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(savedRetail);
         if (Array.isArray(parsed)) {
           setRetailItems(parsed);
+        }
+      }
+
+      const savedTransfers = localStorage.getItem(STORAGE_KEYS.BANK_TRANSFERS);
+      if (savedTransfers) {
+        const parsed = JSON.parse(savedTransfers);
+        if (Array.isArray(parsed)) {
+          setBankTransfers(parsed);
         }
       }
 
@@ -353,6 +372,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.RETAIL, JSON.stringify(retailItems));
     } catch (e) {}
   }, [retailItems]);
+
+  useEffect(() => {
+    if (!isHydratedRef.current || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.BANK_TRANSFERS, JSON.stringify(bankTransfers));
+    } catch (e) {}
+  }, [bankTransfers]);
 
   useEffect(() => {
     if (!isHydratedRef.current || typeof window === 'undefined') return;
@@ -1047,6 +1073,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
     setTransactions((prev) => [newTx, ...prev]);
 
+    if (paymentMethod === 'bank_transfer') {
+      const newBt: BankTransferVerification = {
+        id: `bt_${Date.now()}`,
+        tenantId: activeTenant.id,
+        senderName: `Pro-Shop Customer (${item.name})`,
+        bankName: activeTenant.bankAccount?.bankName || 'GTBank',
+        amount: item.price,
+        timestamp: 'Just now',
+        reference: newTx.reference,
+        status: 'settled',
+        verificationMethod: activeTenant.bankAccount?.isLiveFeedActive ? 'paystack_dedicated_virtual_account' : 'manual_slip_flagged',
+        settledAt: 'Desk Verified',
+        staffVerifiedPin: activeStaff.pin,
+      };
+      setBankTransfers((prev) => {
+        const nextBt = [newBt, ...prev];
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(STORAGE_KEYS.BANK_TRANSFERS, JSON.stringify(nextBt));
+          } catch (e) {}
+        }
+        return nextBt;
+      });
+    }
+
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
       tenantId: activeTenant.id,
@@ -1480,6 +1531,34 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [audit, ...prev]);
   };
 
+  // Update Tenant Bank Account (Real Gym Settlement Configuration)
+  const updateTenantBankAccount = (tenantId: string, bankAccount: GymBankAccount) => {
+    setTenants((prev) => {
+      const next = prev.map((t) => (t.id === tenantId ? { ...t, bankAccount } : t));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.TENANTS, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
+
+    if (activeTenant.id === tenantId) {
+      setActiveTenant((prev) => ({ ...prev, bankAccount }));
+    }
+
+    const audit: AuditLog = {
+      id: `aud_${Date.now()}`,
+      tenantId,
+      timestamp: 'Just now',
+      actorStaffName: activeOwner?.fullName || activeStaff.fullName || 'Gym Owner',
+      action: 'Settlement Bank Account Configured',
+      details: `Settlement account updated to ${bankAccount.bankName} • ${bankAccount.accountNumber} (${bankAccount.accountName}). Live Counter checkout synced.`,
+      severity: 'info',
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+  };
+
   // Membership Plans & Pricing Management
   const addPlan = (data: Omit<Plan, 'id'>) => {
     const newPlan: Plan = {
@@ -1563,6 +1642,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setTransactions([]);
     setExpenses([]);
     setShiftCloseouts([]);
+    setBankTransfers([]);
     setIsDemoMode(false);
     if (typeof window !== 'undefined') {
       try {
@@ -1572,6 +1652,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
         localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
         localStorage.setItem(STORAGE_KEYS.SHIFT_CLOSEOUTS, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEYS.BANK_TRANSFERS, JSON.stringify([]));
       } catch (e) {}
     }
     const audit: AuditLog = {
@@ -1592,6 +1673,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setTransactions(INITIAL_TRANSACTIONS);
     setExpenses(INITIAL_EXPENSES);
     setShiftCloseouts(INITIAL_SHIFT_CLOSEOUTS);
+    setBankTransfers(INITIAL_BANK_TRANSFERS);
     setIsDemoMode(true);
     if (typeof window !== 'undefined') {
       try {
@@ -1601,6 +1683,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(INITIAL_TRANSACTIONS));
         localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(INITIAL_EXPENSES));
         localStorage.setItem(STORAGE_KEYS.SHIFT_CLOSEOUTS, JSON.stringify(INITIAL_SHIFT_CLOSEOUTS));
+        localStorage.setItem(STORAGE_KEYS.BANK_TRANSFERS, JSON.stringify(INITIAL_BANK_TRANSFERS));
       } catch (e) {}
     }
     const audit: AuditLog = {
@@ -1623,6 +1706,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     paymentMethod: Transaction['paymentMethod'];
     photoUrl?: string;
     referralCode?: string;
+    transferSenderName?: string;
+    transferReference?: string;
   }) => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || activePlans[0] || plans[0];
     const isDayPass = selectedPlan.id === 'plan_daily' || selectedPlan.durationDays === 1;
@@ -1734,6 +1819,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       status: 'verified',
     };
     setTransactions((prev) => [newTx, ...prev]);
+
+    if (data.paymentMethod === 'bank_transfer') {
+      const newBt: BankTransferVerification = {
+        id: `bt_${Date.now()}`,
+        tenantId: activeTenant.id,
+        senderName: data.transferSenderName || data.fullName,
+        bankName: activeTenant.bankAccount?.bankName || 'GTBank',
+        amount: finalAmount,
+        timestamp: 'Just now',
+        reference: data.transferReference || newTx.reference,
+        status: 'settled',
+        verificationMethod: activeTenant.bankAccount?.isLiveFeedActive ? 'paystack_dedicated_virtual_account' : 'manual_slip_flagged',
+        settledAt: 'Verified by Front Desk Lead',
+        staffVerifiedPin: activeStaff.pin,
+      };
+      setBankTransfers((prev) => {
+        const nextBt = [newBt, ...prev];
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(STORAGE_KEYS.BANK_TRANSFERS, JSON.stringify(nextBt));
+          } catch (e) {}
+        }
+        return nextBt;
+      });
+    }
 
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
@@ -2026,6 +2136,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       };
       setTransactions((prev) => [newTx, ...prev]);
 
+      if (paymentMethod === 'bank_transfer') {
+        const newBt: BankTransferVerification = {
+          id: `bt_${Date.now()}`,
+          tenantId: activeTenant.id,
+          senderName: target.fullName,
+          bankName: activeTenant.bankAccount?.bankName || 'GTBank',
+          amount: selectedPlan.price,
+          timestamp: 'Just now',
+          reference: newTx.reference,
+          status: 'settled',
+          verificationMethod: activeTenant.bankAccount?.isLiveFeedActive ? 'paystack_dedicated_virtual_account' : 'manual_slip_flagged',
+          settledAt: 'Verified by Front Desk Lead',
+          staffVerifiedPin: activeStaff.pin,
+        };
+        setBankTransfers((prev) => {
+          const nextBt = [newBt, ...prev];
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(STORAGE_KEYS.BANK_TRANSFERS, JSON.stringify(nextBt));
+            } catch (e) {}
+          }
+          return nextBt;
+        });
+      }
+
       const audit: AuditLog = {
         id: `aud_${Date.now()}`,
         tenantId: activeTenant.id,
@@ -2248,6 +2383,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         switchTenant,
         addTenant,
         updateTenantReferralProgram,
+        updateTenantBankAccount,
         owners,
         activeOwner,
         isFounderImpersonating,

@@ -99,6 +99,13 @@ export interface ReferralProgramSettings {
   termsDescription?: string; // Optional terms or instructions
 }
 
+export interface GymBankAccount {
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  isLiveFeedActive?: boolean;
+}
+
 export interface GymTenant {
   id: string;
   name: string;
@@ -114,6 +121,7 @@ export interface GymTenant {
   joinedDate: string;
   trialExpiresAt?: string;
   referralProgram?: ReferralProgramSettings;
+  bankAccount?: GymBankAccount;
 }
 
 export interface ShiftSummary {

@@ -32,6 +32,7 @@ import {
   Fuel,
   WifiOff,
   RefreshCw,
+  Building,
 } from 'lucide-react';
 import { ExpenseLogModal } from '@/components/ExpenseLogModal';
 
@@ -95,6 +96,8 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     member?: Member;
   }>({ status: 'idle', message: '' });
   const [newReferralCode, setNewReferralCode] = useState('');
+  const [transferSenderName, setTransferSenderName] = useState('');
+  const [transferReference, setTransferReference] = useState('');
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const [registeredPass, setRegisteredPass] = useState<{ code: string; name: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -309,6 +312,8 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
       paymentMethod: newPaymentMethod,
       photoUrl: newPhotoUrl || undefined,
       referralCode: newReferralCode.trim() || undefined,
+      transferSenderName: newPaymentMethod === 'bank_transfer' ? (transferSenderName.trim() || newFullName) : undefined,
+      transferReference: newPaymentMethod === 'bank_transfer' ? (transferReference.trim() || undefined) : undefined,
     });
 
     playChime('success');
@@ -318,6 +323,8 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
     setNewPhone('');
     setNewPhotoUrl('');
     setNewReferralCode('');
+    setTransferSenderName('');
+    setTransferReference('');
     setTimeout(() => setRegSuccess(null), 5000);
   };
 
@@ -947,6 +954,57 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                       ))}
                     </div>
                   </div>
+
+                  {newPaymentMethod === 'bank_transfer' && (
+                    <div className="p-3.5 bg-blue-950/40 border border-blue-500/30 rounded-2xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-blue-400 font-bold text-xs">
+                          <Building className="w-4 h-4" /> Direct Member To Transfer:
+                        </div>
+                        <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full font-semibold">
+                          Gym Settlement Account
+                        </span>
+                      </div>
+
+                      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-zinc-400">Bank:</span>
+                          <span className="font-bold text-white">{activeTenant.bankAccount?.bankName || 'Guaranty Trust Bank (GTBank)'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-zinc-400">Account No:</span>
+                          <span className="font-black text-emerald-400 font-mono tracking-wider text-sm">{activeTenant.bankAccount?.accountNumber || '0123456789'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-zinc-400">Account Name:</span>
+                          <span className="font-semibold text-zinc-200">{activeTenant.bankAccount?.accountName || activeTenant.name}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Payer Account / Sender Name</label>
+                          <input
+                            type="text"
+                            value={transferSenderName}
+                            onChange={(e) => setTransferSenderName(e.target.value)}
+                            placeholder={newFullName || "e.g. Adeola Adeleke"}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Bank Reference / Session ID</label>
+                          <input
+                            type="text"
+                            value={transferReference}
+                            onChange={(e) => setTransferReference(e.target.value)}
+                            placeholder="e.g. GTB98234120"
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     type="submit"
