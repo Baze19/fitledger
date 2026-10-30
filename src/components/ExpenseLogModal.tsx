@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ExpenseCategory, ExpenseLog, StaffUser } from '@/types';
-import { Fuel, Wrench, Sparkles, Droplets, Receipt, X, Check, Camera, AlertCircle } from 'lucide-react';
+import { Fuel, Wrench, Sparkles, Droplets, Receipt, X, Check, Camera, AlertCircle, FileText } from 'lucide-react';
 import { CameraCaptureModal } from '@/components/CameraCaptureModal';
 import { FormattedNumberInput } from '@/components/FormattedNumberInput';
 
@@ -24,6 +24,7 @@ export function ExpenseLogModal({
   const [category, setCategory] = useState<ExpenseCategory>('diesel_generator');
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState<string>('15L Diesel for Mikano Generator');
+  const [otherLabel, setOtherLabel] = useState<string>('');
   const [paidFromDrawer, setPaidFromDrawer] = useState<boolean>(true);
   const [receiptPhoto, setReceiptPhoto] = useState<string>('');
   const [staffPin, setStaffPin] = useState<string>('');
@@ -46,6 +47,11 @@ export function ExpenseLogModal({
       return;
     }
 
+    if (category === 'other' && !otherLabel.trim()) {
+      setErrorMsg('Please specify what the "Other" expense is for.');
+      return;
+    }
+
     // PIN check: matches active staff or any authorized staff
     const validStaff = staffList.find((s) => s.pin === staffPin.trim()) || (activeStaff.pin === staffPin.trim() ? activeStaff : null);
     if (!validStaff) {
@@ -57,7 +63,9 @@ export function ExpenseLogModal({
       tenantId: activeStaff.tenantId,
       category,
       amount: numAmount,
-      description: description.trim(),
+      description: category === 'other' && otherLabel.trim()
+        ? `[${otherLabel.trim()}] ${description.trim()}`
+        : description.trim(),
       receiptPhotoUrl: receiptPhoto || undefined,
       staffName: validStaff.fullName,
       staffPin: validStaff.pin,
@@ -108,6 +116,7 @@ export function ExpenseLogModal({
                 { id: 'gym_cleaning', label: 'Gym Cleaning', icon: Sparkles, color: 'text-blue-400' },
                 { id: 'repairs_maintenance', label: 'Repairs / Fixes', icon: Wrench, color: 'text-purple-400' },
                 { id: 'water_utilities', label: 'Water / Utility', icon: Droplets, color: 'text-cyan-400' },
+                { id: 'other', label: 'Other / Custom', icon: FileText, color: 'text-zinc-400' },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -119,9 +128,12 @@ export function ExpenseLogModal({
                       if (item.id === 'diesel_generator') setDescription('15L Diesel for Mikano Generator');
                       else if (item.id === 'gym_cleaning') setDescription('Floor detergent & mop heads');
                       else if (item.id === 'repairs_maintenance') setDescription('Cable pulley lubricant / fix');
-                      else setDescription('Emergency water supply');
+                      else if (item.id === 'water_utilities') setDescription('Emergency water supply');
+                      else setDescription('');
                     }}
                     className={`p-2 rounded-xl border text-left flex items-center gap-2 transition ${
+                      item.id === 'other' ? 'col-span-2' : ''
+                    } ${
                       category === item.id
                         ? 'bg-zinc-800 border-amber-500 text-white font-bold'
                         : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'
@@ -133,6 +145,21 @@ export function ExpenseLogModal({
                 );
               })}
             </div>
+
+            {/* Other: Specify expense type */}
+            {category === 'other' && (
+              <div className="mt-2">
+                <input
+                  type="text"
+                  required
+                  value={otherLabel}
+                  onChange={(e) => { setOtherLabel(e.target.value); setErrorMsg(null); }}
+                  placeholder="e.g. Security uniform, Birthday cake, Branding materials"
+                  className="w-full bg-zinc-900 border border-amber-500/50 focus:border-amber-500 rounded-xl p-2.5 text-white focus:outline-none text-[11px]"
+                />
+                <p className="text-[10px] text-zinc-500 mt-1">What type of expense is this?</p>
+              </div>
+            )}
           </div>
 
           {/* Amount Input */}

@@ -35,6 +35,7 @@ import {
   Building,
 } from 'lucide-react';
 import { ExpenseLogModal } from '@/components/ExpenseLogModal';
+import { BulkMemberImportModal } from '@/components/BulkMemberImportModal';
 
 interface FrontDeskViewProps {
   onOpenShiftClose?: () => void;
@@ -68,6 +69,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [overrideModalMember, setOverrideModalMember] = useState<Member | null>(null);
   const [showExpenseModal, setShowExpenseModal] = useState<boolean>(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState<boolean>(false);
   const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
 
   // Right column tab: 'register' | 'proshop'
@@ -728,8 +730,21 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
             {rightTab === 'register' && (
               <div className="space-y-4">
                 <div className="border-b border-zinc-800 pb-2">
-                  <h3 className="font-extrabold text-sm text-white">Rapid 45s Member Registration</h3>
-                  <p className="text-[11px] text-zinc-400">Issues digital WhatsApp barcode pass immediately</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-white">Rapid 45s Member Registration</h3>
+                      <p className="text-[11px] text-zinc-400">Issues digital WhatsApp barcode pass immediately</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsBulkImportOpen(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl text-[10px] font-bold text-zinc-300 hover:text-white transition cursor-pointer flex-shrink-0"
+                      title="Bulk import members from Excel / CSV"
+                    >
+                      <Upload className="w-3 h-3 text-blue-400" />
+                      <span>Bulk Import</span>
+                    </button>
+                  </div>
                 </div>
 
                 {registeredPass && (
@@ -1376,6 +1391,12 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
         }}
         activeStaff={activeStaff}
         staffList={staffList}
+      />
+
+      {/* Bulk Member Import Modal — available at Front Desk Terminal */}
+      <BulkMemberImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
       />
 
     </div>
