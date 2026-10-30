@@ -282,9 +282,14 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e) {
       console.warn('LocalStorage hydration error:', e);
-    } finally {
-      isHydratedRef.current = true;
     }
+
+    // Set isHydrated asynchronously after React completes the initial mount pass
+    // to prevent subsequent mount effects from overwriting hydrated storage with initial render states
+    const timer = setTimeout(() => {
+      isHydratedRef.current = true;
+    }, 150);
+    return () => clearTimeout(timer);
   }, []);
 
   const [staffList, setStaffList] = useState<StaffUser[]>(INITIAL_STAFF);
@@ -1015,9 +1020,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    setRetailItems((prev) =>
-      prev.map((r) => (r.id === itemId && r.inStock > 0 ? { ...r, inStock: r.inStock - 1 } : r))
-    );
+    setRetailItems((prev) => {
+      const next = prev.map((r) => (r.id === itemId && r.inStock > 0 ? { ...r, inStock: r.inStock - 1 } : r));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.RETAIL, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
     const newTx: Transaction = {
       id: `tx_ret_${Date.now()}`,
@@ -1079,7 +1090,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       ...itemData,
       id: `ret_${Date.now()}`,
     };
-    setRetailItems((prev) => [...prev, newItem]);
+    setRetailItems((prev) => {
+      const next = [...prev, newItem];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.RETAIL, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
@@ -1099,19 +1118,25 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const item = retailItems.find((r) => r.id === itemId);
     if (!item) return;
 
-    setRetailItems((prev) =>
-      prev.map((r) =>
+    setRetailItems((prev) => {
+      const next = prev.map((r) =>
         r.id === itemId
           ? {
               ...r,
               inStock: r.inStock + unitsAdded,
               costPrice: costPerUnit,
               supplierName: supplier,
-              lastRestockedDate: '2026-10-23',
+              lastRestockedDate: new Date().toISOString().slice(0, 10),
             }
           : r
-      )
-    );
+      );
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.RETAIL, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
     const totalCost = unitsAdded * costPerUnit;
     const delivery: StockDelivery = {
@@ -1147,9 +1172,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     const discrepancy = physicalCount - item.inStock;
     const isBalanced = discrepancy === 0;
 
-    setRetailItems((prev) =>
-      prev.map((r) => (r.id === itemId ? { ...r, inStock: physicalCount } : r))
-    );
+    setRetailItems((prev) => {
+      const next = prev.map((r) => (r.id === itemId ? { ...r, inStock: physicalCount } : r));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.RETAIL, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
     const lostNaira = Math.abs(discrepancy) * item.price;
     const audit: AuditLog = {
@@ -1457,7 +1488,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       tenantId: data.tenantId || activeTenant.id,
       isActive: data.isActive ?? true,
     };
-    setPlans((prev) => [newPlan, ...prev]);
+    setPlans((prev) => {
+      const next = [newPlan, ...prev];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
       tenantId: activeTenant.id,
@@ -1472,9 +1511,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePlan = (planId: string, updates: Partial<Omit<Plan, 'id'>>) => {
-    setPlans((prev) =>
-      prev.map((p) => (p.id === planId ? { ...p, ...updates } : p))
-    );
+    setPlans((prev) => {
+      const next = prev.map((p) => (p.id === planId ? { ...p, ...updates } : p));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
     const target = plans.find((p) => p.id === planId);
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
@@ -1490,7 +1535,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   const deletePlan = (planId: string) => {
     const target = plans.find((p) => p.id === planId);
-    setPlans((prev) => prev.filter((p) => p.id !== planId));
+    setPlans((prev) => {
+      const next = prev.filter((p) => p.id !== planId);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
     const audit: AuditLog = {
       id: `aud_${Date.now()}`,
       tenantId: activeTenant.id,
