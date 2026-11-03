@@ -552,7 +552,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
         {/* Left Column (2 Cols): Search, Scan Result & Live Stream */}
         <div className="lg:col-span-2 space-y-5">
           
-          {/* i-Fitness Style Rush-Hour Tablet QR Stand Banner */}
+          {/* Rush-Hour Tablet QR Stand Banner */}
           <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-red-950/40 border border-red-500/30 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center gap-3.5">
               <div className="w-14 h-14 bg-white rounded-2xl p-1 flex items-center justify-center flex-shrink-0 shadow-md border border-zinc-700 overflow-hidden">
@@ -565,7 +565,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
-                    i-Fitness Rush Mode
+                    Rush-Hour Express Mode
                   </span>
                   <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
                     ● Counter QR Active
@@ -1304,7 +1304,7 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
         subtitle="Align face in frame for anti-theft check-in verification"
       />
 
-      {/* i-Fitness Style Fullscreen Counter Tablet Kiosk Stand */}
+      {/* Fullscreen Counter Tablet Kiosk Stand */}
       {showTabletStandModal && (
         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between p-6 text-white animate-fade-in font-sans">
           

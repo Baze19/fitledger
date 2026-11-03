@@ -4,7 +4,7 @@ import { GymProvider } from '@/context/gym-context';
 
 export const metadata: Metadata = {
   title: 'FitLedger OS — Gym Operating System & Anti-Theft Engine',
-  description: 'Next-generation gym management system built for commercial fitness centers in Lagos & Africa. Sub-2s check-ins, i-Fitness PWA experience, and WhatsApp AI auditor.',
+  description: 'Next-generation gym management system built for commercial fitness centers in Lagos & Africa. Sub-2s check-ins, digital pass PWA experience, and WhatsApp AI auditor.',
 };
 
 export default function RootLayout({
