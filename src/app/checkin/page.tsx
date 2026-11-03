@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useGym } from '@/context/gym-context';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -30,6 +30,10 @@ function CheckInContent() {
   } = useGym();
 
   const [inputVal, setInputVal] = useState('');
+  const [savedMemberName, setSavedMemberName] = useState<string | null>(null);
+  const [isAutoCheckedIn, setIsAutoCheckedIn] = useState(false);
+  const autoCheckAttemptedRef = useRef(false);
+
   const [result, setResult] = useState<{
     status: 'success' | 'expired' | 'cross_tenant' | 'not_found' | 'idle';
     message: string;
@@ -82,7 +86,7 @@ function CheckInContent() {
     }
   };
 
-  const handleCheckIn = (codeOrPhone: string) => {
+  const handleCheckIn = (codeOrPhone: string, isAuto: boolean = false) => {
     const query = codeOrPhone.trim();
     if (!query) return;
 
@@ -90,6 +94,15 @@ function CheckInContent() {
 
     if (res.success && res.member) {
       playChime('success');
+      // Persist to localStorage so subsequent scans need zero typing!
+      try {
+        localStorage.setItem('fitledger_member_code', res.member.memberCode);
+        localStorage.setItem('fitledger_member_name', res.member.fullName);
+        localStorage.setItem('fitledger_member_tenant', res.member.tenantId || activeTenant.id);
+      } catch (e) {}
+
+      setSavedMemberName(res.member.fullName);
+      if (isAuto) setIsAutoCheckedIn(true);
       setResult({
         status: 'success',
         message: `Welcome to ${activeTenant.name}, ${res.member.fullName}! Entry verified.`,
@@ -119,9 +132,35 @@ function CheckInContent() {
     }
   };
 
+  // Zero-typing Auto-Check-In on scan!
+  useEffect(() => {
+    if (autoCheckAttemptedRef.current) return;
+    try {
+      const savedCode = localStorage.getItem('fitledger_member_code');
+      const savedName = localStorage.getItem('fitledger_member_name');
+      if (savedCode) {
+        autoCheckAttemptedRef.current = true;
+        setSavedMemberName(savedName || 'Saved Member');
+        // Auto-validate immediately without requiring typing
+        handleCheckIn(savedCode, true);
+      }
+    } catch (e) {}
+  }, [activeTenant.id]);
+
+  const handleClearSavedPass = () => {
+    try {
+      localStorage.removeItem('fitledger_member_code');
+      localStorage.removeItem('fitledger_member_name');
+      localStorage.removeItem('fitledger_member_tenant');
+    } catch (e) {}
+    setSavedMemberName(null);
+    setIsAutoCheckedIn(false);
+    setResult({ status: 'idle', message: '' });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleCheckIn(inputVal);
+    handleCheckIn(inputVal, false);
   };
 
   // Sample quick test members strictly belonging to this gym
@@ -177,13 +216,40 @@ function CheckInContent() {
               Have an awesome workout today! Floor & locker access unlocked. 🔥
             </p>
 
-            <Link
-              href={`/m/${result.member.memberCode}`}
-              className="inline-flex items-center gap-2 text-xs font-bold text-red-400 hover:text-red-300 underline"
-            >
-              <span>View Full Digital Barcode Pass</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {isAutoCheckedIn && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 py-2 px-3.5 rounded-2xl flex items-center justify-between text-xs text-emerald-300">
+                <span className="flex items-center gap-1.5 font-bold">
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  Auto-verified via saved phone pass (0 typing!)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearSavedPass}
+                  className="text-zinc-400 hover:text-white underline text-[11px] cursor-pointer ml-2"
+                >
+                  Not you?
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center justify-center gap-4 pt-1">
+              <Link
+                href={`/m/${result.member.memberCode}`}
+                className="inline-flex items-center gap-2 text-xs font-bold text-red-400 hover:text-red-300 underline"
+              >
+                <span>View Full Digital Barcode Pass</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              {result.status === 'success' && (
+                <button
+                  type="button"
+                  onClick={() => setResult({ status: 'idle', message: '' })}
+                  className="text-xs text-zinc-400 hover:text-zinc-200 underline cursor-pointer"
+                >
+                  Check In Another
+                </button>
+              )}
+            </div>
           </div>
         )}
 

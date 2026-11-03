@@ -43,6 +43,17 @@ function MemberPassContent() {
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
 
+  // Persist member code + tenant in localStorage so the /checkin page can auto-validate
+  useEffect(() => {
+    if (member?.memberCode && member?.tenantId) {
+      try {
+        localStorage.setItem('fitledger_member_code', member.memberCode);
+        localStorage.setItem('fitledger_member_tenant', member.tenantId);
+        localStorage.setItem('fitledger_member_name', member.fullName);
+      } catch (e) { /* private browsing */ }
+    }
+  }, [member?.memberCode, member?.tenantId, member?.fullName]);
+
   // Generate authentic scannable QR code for member badge
   useEffect(() => {
     if (member?.memberCode) {
