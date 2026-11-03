@@ -75,6 +75,83 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
   // Right column tab: 'register' | 'proshop'
   const [rightTab, setRightTab] = useState<'register' | 'proshop'>('register');
 
+  // --- Webcam Scan State ---
+  const [isCamScanning, setIsCamScanning] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scanningIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasScannedRef = useRef(false);
+  
+  // Helper to start webcam stream
+  const startCam = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert('Camera access not supported in this browser');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setIsCamScanning(true);
+        hasScannedRef.current = false;
+        // Begin scanning loop
+        scanningIntervalRef.current = setInterval(() => {
+          if (!videoRef.current || !canvasRef.current) return;
+          const video = videoRef.current;
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          // Import jsQR lazily to avoid bundling issues if not used elsewhere
+          import('jsqr').then(({ default: jsQR }) => {
+            const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+            if (code && !hasScannedRef.current) {
+              hasScannedRef.current = true;
+              // Stop scanning
+              stopCam();
+              // Process check‑in
+              const res = checkInMember(code.data, 'qr_scan');
+              if (res.success) {
+                playChime('success');
+              } else {
+                playChime('error');
+              }
+            }
+          });
+        }, 300);
+      }
+    } catch (e) {
+      console.error('Camera error:', e);
+      alert('Unable to access camera');
+    }
+  };
+
+  const stopCam = () => {
+    setIsCamScanning(false);
+    if (scanningIntervalRef.current) {
+      clearInterval(scanningIntervalRef.current);
+      scanningIntervalRef.current = null;
+    }
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCam();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   // Registration Form State
   const [newFullName, setNewFullName] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -533,12 +610,61 @@ export function FrontDeskView({ onOpenShiftClose }: FrontDeskViewProps = {}) {
                 />
               </div>
               <button
+                type="button"
+                onClick={isCamScanning ? stopCam : startCam}
+                className={`px-4 py-3.5 rounded-2xl text-xs font-black transition shadow-lg cursor-pointer flex items-center gap-2 ${
+                  isCamScanning
+                    ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/30 animate-pulse'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
+                }`}
+                title={isCamScanning ? 'Stop webcam scanner' : 'Activate webcam to scan member QR codes'}
+              >
+                <Camera className="w-4 h-4" />
+                <span className="hidden sm:inline">{isCamScanning ? 'Stop Cam' : 'Webcam Scan'}</span>
+              </button>
+              <button
                 type="submit"
                 className="px-6 py-3.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-black transition shadow-lg shadow-red-600/30 cursor-pointer"
               >
                 Validate
               </button>
             </form>
+
+            {/* Webcam Scanner Viewfinder */}
+            {isCamScanning && (
+              <div className="relative mt-3 rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-lg shadow-emerald-500/20 bg-black">
+                <div className="absolute top-2 left-3 z-10 flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[10px] font-black uppercase text-emerald-400 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                    📸 Live Scanner — Point at member QR code
+                  </span>
+                </div>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full max-h-[280px] object-cover"
+                />
+                {/* Scan crosshair overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-40 h-40 border-2 border-dashed border-emerald-400/50 rounded-2xl"></div>
+                </div>
+                <button
+                  type="button"
+                  onClick={stopCam}
+                  className="absolute top-2 right-2 z-10 p-1.5 bg-black/70 hover:bg-red-600 rounded-full text-white transition cursor-pointer"
+                  title="Close webcam"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {/* Hidden canvas for jsQR frame processing */}
+            <canvas ref={canvasRef} className="hidden" />
 
             {/* Quick Test Scans */}
             <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
